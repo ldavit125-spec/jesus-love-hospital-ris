@@ -281,8 +281,8 @@ const equipment = [
 ];
 const roomName = (code: string) =>
   ({
-    'X-ray 1': '일반촬영실 1',
-    'X-ray 2': '일반촬영실 2',
+    'X-ray 1': 'X-ray 검사실',
+    'X-ray 2': 'X-ray 검사실',
     '건강검진 X-ray': '건강검진 촬영실',
     'CT-01': 'CT실',
     'MRI-01': 'MRI실',
