@@ -433,11 +433,26 @@ export default function Home() {
     const roomLabel = roomName(exam.equipment);
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
+      if ('AudioContext' in window) {
+        const audioContext = new AudioContext();
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        oscillator.frequency.value = 880;
+        gain.gain.setValueAtTime(0.05, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(
+          0.001,
+          audioContext.currentTime + 0.16,
+        );
+        oscillator.connect(gain).connect(audioContext.destination);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.16);
+      }
       const utterance = new SpeechSynthesisUtterance(
         `${exam.name} 환자분, ${roomLabel}로 들어와 주시기 바랍니다.`,
       );
       utterance.lang = 'ko-KR';
-      utterance.rate = 0.9;
+      utterance.rate = 0.82;
+      utterance.pitch = 1.03;
       const voices = window.speechSynthesis.getVoices();
       const koreanVoices = voices.filter((voice) =>
         voice.lang.toLowerCase().startsWith('ko'),
@@ -446,7 +461,7 @@ export default function Home() {
         /female|여성|woman|girl|yuna|sora|heami/i.test(voice.name),
       );
       utterance.voice = femaleVoice ?? koreanVoices[0] ?? null;
-      window.speechSynthesis.speak(utterance);
+      window.setTimeout(() => window.speechSynthesis.speak(utterance), 180);
     }
     const calledAt = new Date().toLocaleTimeString('ko-KR', {
       hour: '2-digit',
