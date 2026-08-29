@@ -1410,6 +1410,26 @@ tbody tr {
 .call-status.called i {
   background: #28a875;
 }
+.call-action {
+  height: 23px;
+  padding: 0 7px;
+  border: 1px solid #d5e2ee;
+  border-radius: 3px;
+  background: #f4f8fc;
+  color: #2d6aa3;
+  font-size: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.call-action.called {
+  background: #eaf6f1;
+  border-color: #c8e7d9;
+  color: #218262;
+}
+.call-action:hover {
+  filter: brightness(0.97);
+}
 .call-time {
   color: #7d8d9e;
   font-size: 8.5px;

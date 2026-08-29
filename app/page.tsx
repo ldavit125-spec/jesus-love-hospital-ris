@@ -121,7 +121,7 @@ const initialWorklist: Exam[] = [
     equipment: 'MRI-01',
     department: '정형외과',
     tech: '한성민',
-    status: '접수',
+    status: '대기',
     urgent: false,
     accession: 'ACC260829-1471',
     doctor: '오정민',
@@ -193,7 +193,7 @@ const initialWorklist: Exam[] = [
     equipment: 'X-ray 1',
     department: '신경외과',
     tech: '',
-    status: '예약',
+    status: '대기',
     urgent: true,
     accession: 'ACC260829-1449',
     doctor: '김도윤',
@@ -229,7 +229,7 @@ const initialWorklist: Exam[] = [
     equipment: 'C-arm · 수술실',
     department: '수술실',
     tech: '문정우',
-    status: '예약',
+    status: '대기',
     urgent: false,
     accession: 'ACC260829-1421',
     doctor: '윤성호',
@@ -247,11 +247,11 @@ const initialWorklist: Exam[] = [
     equipment: 'Portable X-ray',
     department: '중환자실',
     tech: '',
-    status: '취소',
+    status: '대기',
     urgent: false,
     accession: 'ACC260829-1404',
     doctor: '박진호',
-    memo: '환자 상태 변경으로 취소',
+    memo: '검사 대기 상태로 전환',
   },
 ];
 const equipment = [
@@ -292,9 +292,7 @@ function Status({ s }: { s: string }) {
         ? 'progress'
         : s === '대기'
           ? 'waiting'
-          : s === '취소'
-            ? 'cancelled'
-            : 'ready';
+          : 'ready';
   return (
     <span className={`status ${t}`}>
       <i />
@@ -339,7 +337,7 @@ export default function Home() {
       !keyword ||
       exam.id.toLowerCase().includes(keyword) ||
       exam.name.toLowerCase().includes(keyword);
-    const activeStatuses = ['예약', '접수', '대기', '검사중'];
+    const activeStatuses = ['대기', '검사중'];
     const matchesView =
       worklistView === 'completed'
         ? exam.status === '완료'
@@ -349,7 +347,7 @@ export default function Home() {
           : worklistView === 'unassigned'
             ? !exam.tech &&
               (includeCompleted || activeStatuses.includes(exam.status))
-            : includeCompleted || examStatus === '완료' || examStatus === '취소'
+            : includeCompleted || examStatus === '완료'
               ? true
               : activeStatuses.includes(exam.status);
     return (
@@ -395,12 +393,12 @@ export default function Home() {
     setTimeout(() => setCallingId(null), 1800);
   };
   const receiveExam = (exam: Exam) => {
-    updateExam(exam.id, { status: '접수', callStatus: '대기중' });
+    updateExam(exam.id, { status: '대기', callStatus: '대기중' });
     setCallQueues((queues) => ({
       ...queues,
       [exam.equipment]: [...(queues[exam.equipment] ?? []), exam.id],
     }));
-    setTimeout(() => speakCall({ ...exam, status: '접수' }), 350);
+    setTimeout(() => speakCall({ ...exam, status: '대기' }), 350);
   };
   const assignTech = (exam: Exam, tech: string) => {
     if (
@@ -417,7 +415,7 @@ export default function Home() {
         item.date === exam.date &&
         item.time === exam.time &&
         item.status !== '완료' &&
-        item.status !== '취소',
+        item.status !== '완료',
     );
     if (duplicate) {
       setNotice(`${tech} 방사선사는 동일 시간에 이미 배정되어 있습니다.`);
@@ -765,7 +763,7 @@ export default function Home() {
               <div className="panel-header">
                 <div>
                   <h3>오늘 검사 Worklist</h3>
-                  <p>예약 및 접수된 오늘의 검사 목록입니다.</p>
+                  <p>대기·검사중 환자의 오늘 검사 목록입니다.</p>
                 </div>
                 <button className="more-button">
                   <MoreHorizontal size={19} />
@@ -781,9 +779,7 @@ export default function Home() {
                     <span>
                       {
                         exams.filter((exam) =>
-                          ['예약', '접수', '대기', '검사중'].includes(
-                            exam.status,
-                          ),
+                          ['대기', '검사중'].includes(exam.status),
                         ).length
                       }
                     </span>
@@ -798,9 +794,7 @@ export default function Home() {
                         exams.filter(
                           (exam) =>
                             exam.urgent &&
-                            ['예약', '접수', '대기', '검사중'].includes(
-                              exam.status,
-                            ),
+                            ['대기', '검사중'].includes(exam.status),
                         ).length
                       }
                     </span>
@@ -815,9 +809,7 @@ export default function Home() {
                         exams.filter(
                           (exam) =>
                             !exam.tech &&
-                            ['예약', '접수', '대기', '검사중'].includes(
-                              exam.status,
-                            ),
+                            ['대기', '검사중'].includes(exam.status),
                         ).length
                       }
                     </span>
@@ -885,11 +877,9 @@ export default function Home() {
                     onChange={(e) => setExamStatus(e.target.value)}
                   >
                     <option>전체 상태</option>
-                    {['예약', '접수', '대기', '검사중', '완료', '취소'].map(
-                      (item) => (
-                        <option key={item}>{item}</option>
-                      ),
-                    )}
+                    {['대기', '검사중', '완료'].map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="select-filter equipment-filter">
@@ -1006,12 +996,16 @@ export default function Home() {
                           <Status s={exam.status} />
                         </td>
                         <td>
-                          <span
-                            className={`call-status ${exam.callStatus === '호출 완료' ? 'called' : ''}`}
+                          <button
+                            className={`call-action ${exam.callStatus === '호출 완료' ? 'called' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              speakCall(exam);
+                            }}
                           >
-                            <i />
-                            {exam.callStatus ?? '미호출'}
-                          </span>
+                            <Volume2 size={12} />
+                            {exam.callStatus ? '재호출' : '호출'}
+                          </button>
                         </td>
                         <td className="call-time">{exam.callTime ?? '-'}</td>
                       </tr>
@@ -1176,7 +1170,7 @@ export default function Home() {
                         item.date === selected.date &&
                         item.time === selected.time &&
                         item.status !== '완료' &&
-                        item.status !== '취소',
+                        item.status !== '완료',
                     );
                     const mammoBlocked =
                       selected.modality === 'Mammo' && tech.gender !== '여';
@@ -1224,7 +1218,11 @@ export default function Home() {
                 onClick={() => speakCall(selected)}
               >
                 <Volume2 size={14} />
-                {callingId === selected.id ? '방송 중' : '재호출'}
+                {callingId === selected.id
+                  ? '방송 중'
+                  : selected.callStatus
+                    ? '재호출'
+                    : '호출'}
               </button>
             </section>
             <section className="drawer-section memo-section">
@@ -1233,16 +1231,8 @@ export default function Home() {
             </section>
             <div className="drawer-actions">
               <button
-                className="action-receive"
-                disabled={selected.status !== '예약'}
-                onClick={() => receiveExam(selected)}
-              >
-                <ClipboardList size={14} />
-                접수
-              </button>
-              <button
                 className="action-start"
-                disabled={!['접수', '대기'].includes(selected.status)}
+                disabled={selected.status !== '대기'}
                 onClick={() => updateExam(selected.id, { status: '검사중' })}
               >
                 <Play size={14} />
@@ -1255,14 +1245,6 @@ export default function Home() {
               >
                 <CheckCircle2 size={14} />
                 검사 완료
-              </button>
-              <button
-                className="action-cancel"
-                disabled={['완료', '취소'].includes(selected.status)}
-                onClick={() => updateExam(selected.id, { status: '취소' })}
-              >
-                <Ban size={14} />
-                검사 취소
               </button>
             </div>
           </aside>
