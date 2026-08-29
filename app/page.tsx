@@ -310,7 +310,11 @@ export default function Home() {
     [examStatus, setExamStatus] = useState('전체 상태'),
     [exams, setExams] = useState(initialWorklist),
     [selectedId, setSelectedId] = useState<string | null>(null),
-    [notice, setNotice] = useState('');
+    [notice, setNotice] = useState(''),
+    [worklistView, setWorklistView] = useState<
+      'active' | 'urgent' | 'unassigned' | 'completed'
+    >('active'),
+    [includeCompleted, setIncludeCompleted] = useState(false);
   const selected = exams.find((exam) => exam.id === selectedId) ?? null;
   const rows = exams.filter((exam) => {
     const keyword = query.trim().toLowerCase();
@@ -318,9 +322,23 @@ export default function Home() {
       !keyword ||
       exam.id.toLowerCase().includes(keyword) ||
       exam.name.toLowerCase().includes(keyword);
+    const activeStatuses = ['예약', '접수', '대기', '검사중'];
+    const matchesView =
+      worklistView === 'completed'
+        ? exam.status === '완료'
+        : worklistView === 'urgent'
+          ? exam.urgent &&
+            (includeCompleted || activeStatuses.includes(exam.status))
+          : worklistView === 'unassigned'
+            ? !exam.tech &&
+              (includeCompleted || activeStatuses.includes(exam.status))
+            : includeCompleted || examStatus === '완료' || examStatus === '취소'
+              ? true
+              : activeStatuses.includes(exam.status);
     return (
       matchesKeyword &&
       exam.date === date &&
+      matchesView &&
       (room === '전체 장비' || exam.equipment === room) &&
       (modality === '전체 Modality' || exam.modality === modality) &&
       (examStatus === '전체 상태' || exam.status === examStatus)
@@ -475,14 +493,66 @@ export default function Home() {
               </div>
               <div className="table-toolbar">
                 <div className="tabs">
-                  <button className="selected">
-                    전체 <span>128</span>
+                  <button
+                    className={worklistView === 'active' ? 'selected' : ''}
+                    onClick={() => setWorklistView('active')}
+                  >
+                    진행 Worklist{' '}
+                    <span>
+                      {
+                        exams.filter((exam) =>
+                          ['예약', '접수', '대기', '검사중'].includes(
+                            exam.status,
+                          ),
+                        ).length
+                      }
+                    </span>
                   </button>
-                  <button>
-                    응급 <span>5</span>
+                  <button
+                    className={worklistView === 'urgent' ? 'selected' : ''}
+                    onClick={() => setWorklistView('urgent')}
+                  >
+                    응급{' '}
+                    <span>
+                      {
+                        exams.filter(
+                          (exam) =>
+                            exam.urgent &&
+                            ['예약', '접수', '대기', '검사중'].includes(
+                              exam.status,
+                            ),
+                        ).length
+                      }
+                    </span>
                   </button>
-                  <button>
-                    미배정 <span>6</span>
+                  <button
+                    className={worklistView === 'unassigned' ? 'selected' : ''}
+                    onClick={() => setWorklistView('unassigned')}
+                  >
+                    미배정{' '}
+                    <span>
+                      {
+                        exams.filter(
+                          (exam) =>
+                            !exam.tech &&
+                            ['예약', '접수', '대기', '검사중'].includes(
+                              exam.status,
+                            ),
+                        ).length
+                      }
+                    </span>
+                  </button>
+                  <button
+                    className={worklistView === 'completed' ? 'selected' : ''}
+                    onClick={() => {
+                      setWorklistView('completed');
+                      setExamStatus('전체 상태');
+                    }}
+                  >
+                    완료 검사{' '}
+                    <span>
+                      {exams.filter((exam) => exam.status === '완료').length}
+                    </span>
                   </button>
                 </div>
                 <div className="table-actions">
@@ -555,6 +625,18 @@ export default function Home() {
                     ))}
                   </select>
                 </div>
+                <label className="include-completed">
+                  <input
+                    type="checkbox"
+                    checked={includeCompleted}
+                    onChange={(e) => {
+                      setIncludeCompleted(e.target.checked);
+                      if (e.target.checked && worklistView === 'completed')
+                        setWorklistView('active');
+                    }}
+                  />
+                  <span>완료 포함</span>
+                </label>
                 <button
                   className="reset-filter"
                   onClick={() => {
@@ -562,6 +644,8 @@ export default function Home() {
                     setModality('전체 Modality');
                     setExamStatus('전체 상태');
                     setRoom('전체 장비');
+                    setWorklistView('active');
+                    setIncludeCompleted(false);
                   }}
                 >
                   초기화

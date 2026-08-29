@@ -564,6 +564,25 @@ nav button em {
 .equipment-filter select {
   width: 105px;
 }
+.include-completed {
+  height: 29px;
+  padding: 0 8px;
+  border: 1px solid #dfe5eb;
+  border-radius: 4px;
+  background: #fff;
+  color: #5f7186;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 8.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.include-completed input {
+  width: 12px;
+  height: 12px;
+  accent-color: #2865aa;
+}
 .reset-filter {
   margin-left: auto;
   height: 29px;
