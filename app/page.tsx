@@ -703,17 +703,11 @@ export default function Home() {
                 </label>
                 <label>
                   검사명
-                  <select
+                  <input
                     value={reservationExam}
                     onChange={(e) => setReservationExam(e.target.value)}
-                  >
-                    <option value="">처방 검사 선택</option>
-                    <option>흉부 X-ray</option>
-                    <option>복부 CT</option>
-                    <option>뇌 MRI</option>
-                    <option>복부 초음파</option>
-                    <option>유방촬영</option>
-                  </select>
+                    placeholder="검사명을 입력하세요"
+                  />
                 </label>
                 <label>
                   검사일
