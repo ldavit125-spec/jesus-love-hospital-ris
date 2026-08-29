@@ -1387,6 +1387,68 @@ tbody tr {
   font-size: 11px;
   font-weight: 600;
 }
+.call-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  background: #f2f4f7;
+  color: #8793a0;
+  font-size: 8px;
+}
+.call-status i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #aab4bf;
+}
+.call-status.called {
+  background: #eaf6f1;
+  color: #218262;
+}
+.call-status.called i {
+  background: #28a875;
+}
+.call-time {
+  color: #7d8d9e;
+  font-size: 8.5px;
+}
+.call-detail {
+  display: grid;
+  grid-template-columns: 65px 1fr;
+  gap: 5px 10px;
+  align-items: center;
+  font-size: 9px;
+}
+.call-detail span {
+  color: #8391a0;
+}
+.call-detail strong {
+  color: #2d6b9f;
+}
+.call-detail small {
+  grid-column: 2;
+  color: #96a2af;
+  font-size: 8px;
+}
+.recall-button {
+  margin-top: 11px;
+  width: 100%;
+  height: 30px;
+  border: 1px solid #d6e1ec;
+  border-radius: 4px;
+  background: #f4f8fc;
+  color: #2c67a2;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.recall-button:hover {
+  background: #e8f1fa;
+}
 .menu-button,
 .mobile-close,
 .backdrop {

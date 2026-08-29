@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Stethoscope,
   UsersRound,
+  Volume2,
   X,
   Zap,
 } from 'lucide-react';
@@ -68,6 +69,8 @@ type Exam = {
   accession: string;
   doctor: string;
   memo: string;
+  callStatus?: string;
+  callTime?: string;
 };
 const initialWorklist: Exam[] = [
   {
@@ -323,7 +326,9 @@ export default function Home() {
       department: '호흡기내과',
       doctor: '장태성',
       priority: '일반',
-    });
+    }),
+    [callQueues, setCallQueues] = useState<Record<string, string[]>>({}),
+    [callingId, setCallingId] = useState<string | null>(null);
   const selected = exams.find((exam) => exam.id === selectedId) ?? null;
   const rows = exams.filter((exam) => {
     const keyword = query.trim().toLowerCase();
@@ -359,6 +364,40 @@ export default function Home() {
     );
     setNotice('변경사항이 Worklist에 반영되었습니다.');
     setTimeout(() => setNotice(''), 2200);
+  };
+  const speakCall = (exam: Exam) => {
+    const roomLabel = exam.equipment.includes('CT')
+      ? 'CT 검사실'
+      : exam.equipment.includes('MRI')
+        ? 'MRI 검사실'
+        : exam.equipment.includes('건강검진')
+          ? '건강검진 X-ray 검사실'
+          : `${exam.equipment} 검사실`;
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(
+        `${exam.name} 환자분, ${roomLabel}로 들어와 주시기 바랍니다.`,
+      );
+      utterance.lang = 'ko-KR';
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    }
+    const calledAt = new Date().toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    updateExam(exam.id, { callStatus: '호출 완료', callTime: calledAt });
+    setCallingId(exam.id);
+    setTimeout(() => setCallingId(null), 1800);
+  };
+  const receiveExam = (exam: Exam) => {
+    updateExam(exam.id, { status: '접수', callStatus: '대기중' });
+    setCallQueues((queues) => ({
+      ...queues,
+      [exam.equipment]: [...(queues[exam.equipment] ?? []), exam.id],
+    }));
+    setTimeout(() => speakCall({ ...exam, status: '접수' }), 350);
   };
   const assignTech = (exam: Exam, tech: string) => {
     if (
@@ -936,6 +975,8 @@ export default function Home() {
                         '장비',
                         '담당 방사선사',
                         '검사 상태',
+                        '호출 상태',
+                        '호출 시간',
                       ].map((h) => (
                         <th key={h}>{h}</th>
                       ))}
@@ -994,6 +1035,15 @@ export default function Home() {
                         <td>
                           <Status s={exam.status} />
                         </td>
+                        <td>
+                          <span
+                            className={`call-status ${exam.callStatus === '호출 완료' ? 'called' : ''}`}
+                          >
+                            <i />
+                            {exam.callStatus ?? '미호출'}
+                          </span>
+                        </td>
+                        <td className="call-time">{exam.callTime ?? '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1181,6 +1231,32 @@ export default function Home() {
                 </p>
               )}
             </section>
+            <section className="drawer-section call-section">
+              <h5>환자 호출</h5>
+              <div className="call-detail">
+                <span>호출 상태</span>
+                <strong>{selected.callStatus ?? '미호출'}</strong>
+                <small>
+                  {selected.callTime
+                    ? `마지막 호출 ${selected.callTime}`
+                    : '접수 완료 후 대기열에 등록됩니다.'}
+                </small>
+                {(callQueues[selected.equipment]?.indexOf(selected.id) ?? -1) >=
+                  0 && (
+                  <small>
+                    검사실 대기 순번{' '}
+                    {callQueues[selected.equipment].indexOf(selected.id) + 1}번
+                  </small>
+                )}
+              </div>
+              <button
+                className="recall-button"
+                onClick={() => speakCall(selected)}
+              >
+                <Volume2 size={14} />
+                {callingId === selected.id ? '방송 중' : '재호출'}
+              </button>
+            </section>
             <section className="drawer-section memo-section">
               <h5>검사 메모</h5>
               <p>{selected.memo}</p>
@@ -1189,7 +1265,7 @@ export default function Home() {
               <button
                 className="action-receive"
                 disabled={selected.status !== '예약'}
-                onClick={() => updateExam(selected.id, { status: '접수' })}
+                onClick={() => receiveExam(selected)}
               >
                 <ClipboardList size={14} />
                 접수
