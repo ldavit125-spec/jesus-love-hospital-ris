@@ -397,13 +397,7 @@ export default function Home() {
   const speakCall = (exam: Exam) => {
     if (!CALLABLE_MODALITIES.includes(exam.modality) || exam.status !== '대기')
       return;
-    const roomLabel = exam.equipment.includes('CT')
-      ? 'CT 검사실'
-      : exam.equipment.includes('MRI')
-        ? 'MRI 검사실'
-        : exam.equipment.includes('건강검진')
-          ? '건강검진 X-ray 검사실'
-          : `${exam.equipment} 검사실`;
+    const roomLabel = roomName(exam.equipment);
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(
