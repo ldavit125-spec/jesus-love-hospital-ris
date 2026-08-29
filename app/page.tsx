@@ -314,7 +314,16 @@ export default function Home() {
     [worklistView, setWorklistView] = useState<
       'active' | 'urgent' | 'unassigned' | 'completed'
     >('active'),
-    [includeCompleted, setIncludeCompleted] = useState(false);
+    [includeCompleted, setIncludeCompleted] = useState(false),
+    [patientQuery, setPatientQuery] = useState(''),
+    [patientResult, setPatientResult] = useState<Exam | null>(null),
+    [orderExam, setOrderExam] = useState({
+      modality: 'X-ray',
+      exam: 'Chest PA',
+      department: '호흡기내과',
+      doctor: '장태성',
+      priority: '일반',
+    });
   const selected = exams.find((exam) => exam.id === selectedId) ?? null;
   const rows = exams.filter((exam) => {
     const keyword = query.trim().toLowerCase();
@@ -373,6 +382,43 @@ export default function Home() {
       return;
     }
     updateExam(exam.id, { tech });
+  };
+  const findPatient = () => {
+    const value = patientQuery.trim().toLowerCase();
+    setPatientResult(
+      exams.find(
+        (exam) =>
+          exam.id.toLowerCase().includes(value) ||
+          exam.name.toLowerCase().includes(value),
+      ) ?? null,
+    );
+  };
+  const registerOrder = () => {
+    const base = patientResult ?? exams[0];
+    const newExam: Exam = {
+      id: `202608-${String(exams.length + 1500).padStart(5, '0')}`,
+      date: '2026-08-29',
+      time: '11:00',
+      name: base.name,
+      sex: base.sex,
+      age: base.age,
+      exam: orderExam.exam,
+      modality: orderExam.modality,
+      equipment:
+        orderExam.modality === 'X-ray' ? 'X-ray 1' : `${orderExam.modality}-01`,
+      department: orderExam.department,
+      tech: '',
+      status: '예약',
+      urgent: orderExam.priority === '응급',
+      accession: `ACC260829-${exams.length + 1500}`,
+      doctor: orderExam.doctor,
+      memo: '신규 오더 등록',
+    };
+    setExams((current) => [newExam, ...current]);
+    setPatientResult(newExam);
+    setNotice('신규 검사 오더가 등록되어 Worklist에 반영되었습니다.');
+    setActive('Dashboard');
+    setTimeout(() => setNotice(''), 2600);
   };
   return (
     <main className="app-shell">
@@ -451,6 +497,231 @@ export default function Home() {
             </button>
           </div>
         </header>
+        {active === '환자 조회' && (
+          <div className="module-overlay">
+            <div className="module-card">
+              <div className="module-head">
+                <div>
+                  <span>REGISTRY / PATIENT SEARCH</span>
+                  <h2>환자 조회</h2>
+                  <p>환자번호, 이름 또는 생년월일로 환자를 조회합니다.</p>
+                </div>
+                <button onClick={() => setActive('Dashboard')}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="patient-searchbar">
+                <Search size={17} />
+                <input
+                  autoFocus
+                  value={patientQuery}
+                  onChange={(e) => setPatientQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && findPatient()}
+                  placeholder="환자번호 / 이름 / 생년월일 (YYYY-MM-DD)"
+                />
+                <button onClick={findPatient}>조회</button>
+              </div>
+              {patientResult ? (
+                <div className="patient-detail">
+                  <div className="patient-banner">
+                    <div className="patient-avatar large">
+                      {patientResult.name[0]}
+                    </div>
+                    <div>
+                      <h3>
+                        {patientResult.name}{' '}
+                        <small>
+                          {patientResult.sex} · {patientResult.age}세
+                        </small>
+                      </h3>
+                      <p>
+                        {patientResult.id} · {patientResult.date} 등록
+                      </p>
+                    </div>
+                    <button
+                      className="primary-small"
+                      onClick={() => setActive('검사 오더')}
+                    >
+                      + 신규 검사 오더
+                    </button>
+                  </div>
+                  <div className="patient-info-grid">
+                    <div>
+                      <span>환자번호</span>
+                      <strong>{patientResult.id}</strong>
+                    </div>
+                    <div>
+                      <span>생년월일</span>
+                      <strong>19{patientResult.id.slice(-2)}-04-12</strong>
+                    </div>
+                    <div>
+                      <span>진료과</span>
+                      <strong>{patientResult.department}</strong>
+                    </div>
+                    <div>
+                      <span>주치의</span>
+                      <strong>{patientResult.doctor}</strong>
+                    </div>
+                  </div>
+                  <div className="history-section">
+                    <h4>오늘 검사 오더</h4>
+                    {exams
+                      .filter(
+                        (exam) =>
+                          exam.id === patientResult.id ||
+                          exam.name === patientResult.name,
+                      )
+                      .map((exam) => (
+                        <div className="history-row" key={exam.id}>
+                          <span>{exam.time}</span>
+                          <strong>{exam.exam}</strong>
+                          <small>
+                            {exam.modality} · {exam.equipment}
+                          </small>
+                          <Status s={exam.status} />
+                        </div>
+                      ))}
+                    <h4>과거 검사 이력</h4>
+                    <div className="history-row muted">
+                      <span>2026-06-18</span>
+                      <strong>Chest PA</strong>
+                      <small>X-ray 1 · 판독 완료</small>
+                      <Status s="완료" />
+                    </div>
+                    <div className="history-row muted">
+                      <span>2026-03-02</span>
+                      <strong>Abdomen US</strong>
+                      <small>US-01 · 판독 완료</small>
+                      <Status s="완료" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="module-empty">
+                  <Search size={27} />
+                  <strong>환자를 조회하세요</strong>
+                  <span>예: 202608-01482 또는 김민준</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {active === '검사 오더' && (
+          <div className="module-overlay">
+            <div className="module-card order-card">
+              <div className="module-head">
+                <div>
+                  <span>ORDER ENTRY / RADIOLOGY</span>
+                  <h2>신규 검사 오더</h2>
+                  <p>검사 처방을 등록하면 오늘 Worklist에 자동 반영됩니다.</p>
+                </div>
+                <button onClick={() => setActive('Dashboard')}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="order-patient">
+                <span>환자</span>
+                <strong>{(patientResult ?? exams[0]).name}</strong>
+                <small>{(patientResult ?? exams[0]).id}</small>
+                <button onClick={() => setActive('환자 조회')}>
+                  환자 변경
+                </button>
+              </div>
+              <div className="order-form">
+                <label>
+                  Modality
+                  <select
+                    value={orderExam.modality}
+                    onChange={(e) =>
+                      setOrderExam({ ...orderExam, modality: e.target.value })
+                    }
+                  >
+                    {[
+                      'X-ray',
+                      'CT',
+                      'MRI',
+                      'Ultrasound',
+                      'Mammo',
+                      'C-arm',
+                      'Portable',
+                    ].map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  검사명
+                  <input
+                    value={orderExam.exam}
+                    onChange={(e) =>
+                      setOrderExam({ ...orderExam, exam: e.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  진료과
+                  <select
+                    value={orderExam.department}
+                    onChange={(e) =>
+                      setOrderExam({ ...orderExam, department: e.target.value })
+                    }
+                  >
+                    {[
+                      '호흡기내과',
+                      '신경외과',
+                      '정형외과',
+                      '소화기내과',
+                      '유방외과',
+                      '건강검진센터',
+                      '수술실',
+                    ].map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  담당의
+                  <input
+                    value={orderExam.doctor}
+                    onChange={(e) =>
+                      setOrderExam({ ...orderExam, doctor: e.target.value })
+                    }
+                  />
+                </label>
+                <fieldset>
+                  <legend>우선순위</legend>
+                  <label className="priority-option">
+                    <input
+                      type="radio"
+                      checked={orderExam.priority === '일반'}
+                      onChange={() =>
+                        setOrderExam({ ...orderExam, priority: '일반' })
+                      }
+                    />{' '}
+                    일반
+                  </label>
+                  <label className="priority-option emergency">
+                    <input
+                      type="radio"
+                      checked={orderExam.priority === '응급'}
+                      onChange={() =>
+                        setOrderExam({ ...orderExam, priority: '응급' })
+                      }
+                    />{' '}
+                    응급
+                  </label>
+                </fieldset>
+              </div>
+              <div className="order-note">
+                <AlertTriangle size={14} /> 건강검진용 X-ray는 별도 검사실로
+                자동 배정됩니다.
+              </div>
+              <button className="register-order" onClick={registerOrder}>
+                검사 오더 등록
+              </button>
+            </div>
+          </div>
+        )}
         <div className="content">
           <div className="page-heading">
             <div>
