@@ -279,6 +279,19 @@ const equipment = [
   ['C-arm · 투시실', '1 / 1', '점검 예정', 0],
   ['Portable X-ray', '1 / 1', '병동 운영', 1],
 ];
+const roomName = (code: string) =>
+  ({
+    'X-ray 1': '일반촬영실 1',
+    'X-ray 2': '일반촬영실 2',
+    '건강검진 X-ray': '건강검진 촬영실',
+    'CT-01': 'CT실',
+    'MRI-01': 'MRI실',
+    'US-01': '초음파실',
+    'MG-01': '유방촬영실',
+    'C-arm · 수술실': '수술실 C-arm',
+    'C-arm · 투시실': '투시실 C-arm',
+    'Portable X-ray': 'Portable',
+  })[code] ?? code;
 const staff = [
   ['이지훈', 'DR-01', '일반촬영'],
   ['오세훈', 'DR-02', '일반촬영'],
@@ -968,7 +981,7 @@ export default function Home() {
                         '환자명',
                         '검사명',
                         'Modality',
-                        '장비',
+                        '검사실',
                         '담당 방사선사',
                         '검사 상태',
                         '호출 상태',
@@ -1022,7 +1035,7 @@ export default function Home() {
                         </td>
                         <td>{exam.exam}</td>
                         <td>{exam.modality}</td>
-                        <td>{exam.equipment}</td>
+                        <td>{roomName(exam.equipment)}</td>
                         <td>
                           {exam.tech || (
                             <span className="unassigned">미배정</span>
@@ -1188,7 +1201,11 @@ export default function Home() {
                   <dd>{selected.modality}</dd>
                 </div>
                 <div>
-                  <dt>장비 / 검사실</dt>
+                  <dt>검사실</dt>
+                  <dd>{roomName(selected.equipment)}</dd>
+                </div>
+                <div>
+                  <dt>장비 코드</dt>
                   <dd>{selected.equipment}</dd>
                 </div>
                 <div>
