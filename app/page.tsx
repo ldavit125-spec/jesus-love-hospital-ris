@@ -438,6 +438,14 @@ export default function Home() {
       );
       utterance.lang = 'ko-KR';
       utterance.rate = 0.9;
+      const voices = window.speechSynthesis.getVoices();
+      const koreanVoices = voices.filter((voice) =>
+        voice.lang.toLowerCase().startsWith('ko'),
+      );
+      const femaleVoice = koreanVoices.find((voice) =>
+        /female|여성|woman|girl|yuna|sora|heami/i.test(voice.name),
+      );
+      utterance.voice = femaleVoice ?? koreanVoices[0] ?? null;
       window.speechSynthesis.speak(utterance);
     }
     const calledAt = new Date().toLocaleTimeString('ko-KR', {
