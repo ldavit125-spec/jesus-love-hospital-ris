@@ -475,6 +475,28 @@ nav button em {
   font-size: 8px;
   color: #99a5b3;
 }
+.device-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 0 2px;
+  border-top: 1px solid #edf1f6;
+}
+.device-tabs button {
+  border: 1px solid #d9e2ee;
+  background: #fff;
+  color: #64748b;
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.device-tabs button.selected {
+  color: #0f4c81;
+  border-color: #4f8fc5;
+  background: #eef6fc;
+  font-weight: 700;
+}
 .table-actions {
   display: flex;
   gap: 6px;

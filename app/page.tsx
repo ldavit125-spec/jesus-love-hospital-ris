@@ -45,6 +45,19 @@ const navItems = [
   ['시스템 설정', Settings],
 ] as const;
 const CALLABLE_MODALITIES = ['X-ray', 'CT', 'MRI', 'Ultrasound', 'Mammo'];
+const DEVICE_TABS = [
+  ['전체', '전체 장비'],
+  ['X-ray 1', 'X-ray 1'],
+  ['X-ray 2', 'X-ray 2'],
+  ['건강검진 X-ray', '건강검진 X-ray'],
+  ['CT', 'CT-01'],
+  ['MRI', 'MRI-01'],
+  ['Ultrasound', 'US-01'],
+  ['Mammo', 'MG-01'],
+  ['수술실 C-arm', 'C-arm · 수술실'],
+  ['투시실 C-arm', 'C-arm · 투시실'],
+  ['Portable X-ray', 'Portable X-ray'],
+] as const;
 const kpis = [
   ['오늘 검사', '128', '전일 대비 +12', 'blue'],
   ['검사 대기', '24', '평균 대기 18분', 'amber'],
@@ -306,6 +319,7 @@ export default function Home() {
     [side, setSide] = useState(false),
     [query, setQuery] = useState(''),
     [room, setRoom] = useState('전체 장비'),
+    [deviceTab, setDeviceTab] = useState('전체 장비'),
     [date, setDate] = useState('2026-08-29'),
     [modality, setModality] = useState('전체 Modality'),
     [examStatus, setExamStatus] = useState('전체 상태'),
@@ -354,6 +368,7 @@ export default function Home() {
       matchesKeyword &&
       exam.date === date &&
       matchesView &&
+      (deviceTab === '전체 장비' || exam.equipment === deviceTab) &&
       (room === '전체 장비' || exam.equipment === room) &&
       (modality === '전체 Modality' || exam.modality === modality) &&
       (examStatus === '전체 상태' || exam.status === examStatus)
@@ -840,6 +855,24 @@ export default function Home() {
                     />
                   </label>
                 </div>
+              </div>
+              <div
+                className="device-tabs"
+                role="tablist"
+                aria-label="장비별 Worklist"
+              >
+                {DEVICE_TABS.map(([label, value]) => (
+                  <button
+                    key={value}
+                    className={deviceTab === value ? 'selected' : ''}
+                    onClick={() => {
+                      setDeviceTab(value);
+                      setRoom('전체 장비');
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
               <div className="advanced-filters">
                 <label className="date-filter">
