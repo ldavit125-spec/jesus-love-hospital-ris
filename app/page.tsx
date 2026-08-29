@@ -367,7 +367,8 @@ export default function Home() {
     setTimeout(() => setNotice(''), 2200);
   };
   const speakCall = (exam: Exam) => {
-    if (!CALLABLE_MODALITIES.includes(exam.modality)) return;
+    if (!CALLABLE_MODALITIES.includes(exam.modality) || exam.status !== '대기')
+      return;
     const roomLabel = exam.equipment.includes('CT')
       ? 'CT 검사실'
       : exam.equipment.includes('MRI')
@@ -997,7 +998,8 @@ export default function Home() {
                         <td>
                           <Status s={exam.status} />
                         </td>
-                        {CALLABLE_MODALITIES.includes(exam.modality) ? (
+                        {CALLABLE_MODALITIES.includes(exam.modality) &&
+                        exam.status === '대기' ? (
                           <>
                             <td>
                               <button
@@ -1208,39 +1210,41 @@ export default function Home() {
                 </p>
               )}
             </section>
-            {CALLABLE_MODALITIES.includes(selected.modality) && (
-              <section className="drawer-section call-section">
-                <h5>환자 호출</h5>
-                <div className="call-detail">
-                  <span>호출 상태</span>
-                  <strong>{selected.callStatus ?? '미호출'}</strong>
-                  <small>
-                    {selected.callTime
-                      ? `마지막 호출 ${selected.callTime}`
-                      : '접수 완료 후 대기열에 등록됩니다.'}
-                  </small>
-                  {(callQueues[selected.equipment]?.indexOf(selected.id) ??
-                    -1) >= 0 && (
+            {CALLABLE_MODALITIES.includes(selected.modality) &&
+              selected.status === '대기' && (
+                <section className="drawer-section call-section">
+                  <h5>환자 호출</h5>
+                  <div className="call-detail">
+                    <span>호출 상태</span>
+                    <strong>{selected.callStatus ?? '미호출'}</strong>
                     <small>
-                      검사실 대기 순번{' '}
-                      {callQueues[selected.equipment].indexOf(selected.id) + 1}
-                      번
+                      {selected.callTime
+                        ? `마지막 호출 ${selected.callTime}`
+                        : '접수 완료 후 대기열에 등록됩니다.'}
                     </small>
-                  )}
-                </div>
-                <button
-                  className="recall-button"
-                  onClick={() => speakCall(selected)}
-                >
-                  <Volume2 size={14} />
-                  {callingId === selected.id
-                    ? '방송 중'
-                    : selected.callStatus
-                      ? '재호출'
-                      : '호출'}
-                </button>
-              </section>
-            )}
+                    {(callQueues[selected.equipment]?.indexOf(selected.id) ??
+                      -1) >= 0 && (
+                      <small>
+                        검사실 대기 순번{' '}
+                        {callQueues[selected.equipment].indexOf(selected.id) +
+                          1}
+                        번
+                      </small>
+                    )}
+                  </div>
+                  <button
+                    className="recall-button"
+                    onClick={() => speakCall(selected)}
+                  >
+                    <Volume2 size={14} />
+                    {callingId === selected.id
+                      ? '방송 중'
+                      : selected.callStatus
+                        ? '재호출'
+                        : '호출'}
+                  </button>
+                </section>
+              )}
             <section className="drawer-section memo-section">
               <h5>검사 메모</h5>
               <p>{selected.memo}</p>
