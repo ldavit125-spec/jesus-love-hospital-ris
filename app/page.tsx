@@ -347,7 +347,40 @@ export default function Home() {
     [patientResult, setPatientResult] = useState<Exam | null>(null),
     [callQueues, setCallQueues] = useState<Record<string, string[]>>({}),
     [callingId, setCallingId] = useState<string | null>(null);
+  const [reservationPatient, setReservationPatient] = useState('');
+  const [reservationExam, setReservationExam] = useState('');
+  const [reservationRoom, setReservationRoom] = useState('X-ray 1');
+  const [reservationDate, setReservationDate] = useState('2026-08-29');
+  const [reservationTime, setReservationTime] = useState('09:00');
   const selected = exams.find((exam) => exam.id === selectedId) ?? null;
+  const reservationSlots = ['09:00', '09:30', '10:00', '10:30', '11:00'];
+  const reservationConflict = exams.some(
+    (exam) =>
+      exam.equipment === reservationRoom &&
+      exam.date === reservationDate &&
+      exam.time === reservationTime,
+  );
+  const registerReservation = () => {
+    if (!reservationPatient || !reservationExam || reservationConflict) return;
+    const source = exams.find((exam) => exam.id === reservationPatient);
+    if (!source) return;
+    setExams((current) => [
+      ...current,
+      {
+        ...source,
+        id: `${source.id}-R${current.length}`,
+        date: reservationDate,
+        time: reservationTime,
+        exam: reservationExam,
+        equipment: reservationRoom,
+        status: '대기',
+        callStatus: undefined,
+        callTime: undefined,
+      },
+    ]);
+    setNotice('검사 예약이 완료되어 Worklist에 반영되었습니다.');
+    setActive('Dashboard');
+  };
   // 검사 오더 등록 모듈은 비활성화되어 기존 Worklist/환자 조회만 유지합니다.
   const orderExam = {
     modality: 'X-ray',
@@ -635,6 +668,94 @@ export default function Home() {
                   <span>예: 202608-01482 또는 김민준</span>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+        {active === '검사 예약' && (
+          <div className="module-overlay">
+            <div className="module-card order-card">
+              <div className="module-head">
+                <div>
+                  <span>HIS / EMR PRESCRIPTIONS</span>
+                  <h2>검사 예약</h2>
+                  <p>HIS/EMR에서 발행된 처방을 선택해 예약합니다.</p>
+                </div>
+                <button onClick={() => setActive('Dashboard')}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="order-form">
+                <label>
+                  환자번호 / 환자명
+                  <input
+                    value={reservationPatient}
+                    onChange={(e) => setReservationPatient(e.target.value)}
+                    placeholder="환자번호를 입력하세요"
+                  />
+                </label>
+                <label>
+                  검사명
+                  <select
+                    value={reservationExam}
+                    onChange={(e) => setReservationExam(e.target.value)}
+                  >
+                    <option value="">처방 검사 선택</option>
+                    <option>흉부 X-ray</option>
+                    <option>복부 CT</option>
+                    <option>뇌 MRI</option>
+                    <option>복부 초음파</option>
+                    <option>유방촬영</option>
+                  </select>
+                </label>
+                <label>
+                  검사일
+                  <input
+                    type="date"
+                    value={reservationDate}
+                    onChange={(e) => setReservationDate(e.target.value)}
+                  />
+                </label>
+                <label>
+                  검사실
+                  <select
+                    value={reservationRoom}
+                    onChange={(e) => setReservationRoom(e.target.value)}
+                  >
+                    {equipment
+                      .filter((e) => e[0] !== 'Portable X-ray')
+                      .map((e) => (
+                        <option key={e[0]} value={e[0]}>
+                          {roomName(e[0] as string)}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label>
+                  예약시간
+                  <select
+                    value={reservationTime}
+                    onChange={(e) => setReservationTime(e.target.value)}
+                  >
+                    {reservationSlots.map((slot) => (
+                      <option key={slot}>{slot}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {reservationConflict && (
+                <p className="form-error">
+                  동일 검사실에 이미 예약된 시간입니다.
+                </p>
+              )}
+              <button
+                className="register-order"
+                disabled={
+                  !reservationPatient || !reservationExam || reservationConflict
+                }
+                onClick={registerReservation}
+              >
+                예약 완료 · Worklist 연동
+              </button>
             </div>
           </div>
         )}
