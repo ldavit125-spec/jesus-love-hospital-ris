@@ -749,14 +749,11 @@ export default function Home() {
                 </label>
                 <label>
                   예약시간
-                  <select
+                  <input
                     value={reservationTime}
                     onChange={(e) => setReservationTime(e.target.value)}
-                  >
-                    {reservationSlots.map((slot) => (
-                      <option key={slot}>{slot}</option>
-                    ))}
-                  </select>
+                    placeholder="예: 09:30"
+                  />
                 </label>
               </div>
               {reservationConflict && (
