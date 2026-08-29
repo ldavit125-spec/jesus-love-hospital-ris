@@ -528,6 +528,52 @@ nav button em {
   font-size: 9px;
   cursor: pointer;
 }
+.advanced-filters {
+  min-height: 45px;
+  padding: 7px 14px;
+  border-top: 1px solid #edf0f3;
+  background: #fbfcfd;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.date-filter,
+.select-filter {
+  height: 29px;
+  border: 1px solid #dfe5eb;
+  border-radius: 4px;
+  background: #fff;
+  color: #637286;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 7px;
+}
+.date-filter input,
+.select-filter select {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #52657b;
+  font-size: 8.5px;
+}
+.select-filter select {
+  width: 94px;
+  cursor: pointer;
+}
+.equipment-filter select {
+  width: 105px;
+}
+.reset-filter {
+  margin-left: auto;
+  height: 29px;
+  padding: 0 9px;
+  border: 1px solid #dfe5eb;
+  border-radius: 4px;
+  background: #fff;
+  color: #6b7b8e;
+  font-size: 8.5px;
+}
 .table-wrap {
   overflow-x: auto;
   border-top: 1px solid #edf0f3;
@@ -556,6 +602,54 @@ td {
 }
 tbody tr:hover {
   background: #f8fbff;
+}
+tbody tr {
+  cursor: pointer;
+}
+.screening-row {
+  background: #f8fbff;
+}
+.urgent-flag,
+.screening-flag,
+.routine-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 3px;
+  font-size: 8px;
+  font-weight: 600;
+}
+.urgent-flag {
+  color: #c33d3d;
+  background: #fff0f0;
+}
+.screening-flag {
+  color: #2569a8;
+  background: #eaf3fc;
+}
+.routine-flag {
+  color: #718096;
+  background: #f0f3f6;
+}
+.exam-time {
+  font-size: 8.5px;
+  font-weight: 600;
+  color: #52657b;
+}
+.patient-meta {
+  display: inline-block;
+  margin-left: 5px;
+  color: #98a4b1;
+  font-size: 7.5px;
+}
+.unassigned {
+  color: #b77b1b;
+  background: #fff5e4;
+  padding: 3px 5px;
+  border-radius: 3px;
+  font-size: 8px;
 }
 .patient-id {
   border: 0;
@@ -593,6 +687,11 @@ tbody tr:hover {
 .status.complete {
   background: #eaf7f1;
   color: #228b64;
+}
+.status.cancelled {
+  background: #f1f2f4;
+  color: #8b929c;
+  text-decoration: line-through;
 }
 .empty {
   padding: 30px;
@@ -758,6 +857,243 @@ tbody tr:hover {
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+.drawer-backdrop {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  border: 0;
+  background: #071d3545;
+  cursor: default;
+}
+.exam-drawer {
+  position: fixed;
+  z-index: 55;
+  top: 0;
+  right: 0;
+  width: 410px;
+  height: 100vh;
+  background: #fff;
+  box-shadow: -12px 0 32px #0b29431f;
+  display: flex;
+  flex-direction: column;
+  color: #263a50;
+  animation: drawer-in 0.18s ease-out;
+}
+@keyframes drawer-in {
+  from {
+    transform: translateX(28px);
+    opacity: 0.7;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.drawer-header {
+  height: 69px;
+  padding: 0 20px;
+  border-bottom: 1px solid #e1e7ee;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.drawer-kicker {
+  display: block;
+  font-size: 7.5px;
+  letter-spacing: 1px;
+  color: #7890ab;
+  font-weight: 700;
+}
+.drawer-header h3 {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+.drawer-header button {
+  width: 31px;
+  height: 31px;
+  border: 1px solid #dfe5eb;
+  border-radius: 4px;
+  background: #fff;
+  color: #65768a;
+  display: grid;
+  place-items: center;
+}
+.patient-summary {
+  min-height: 83px;
+  padding: 15px 20px;
+  background: #f6f9fc;
+  border-bottom: 1px solid #e2e8ef;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.patient-avatar {
+  width: 39px;
+  height: 39px;
+  border-radius: 50%;
+  background: #dce9f7;
+  color: #245f9e;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+.patient-summary h4 {
+  margin: 0;
+  font-size: 13px;
+}
+.patient-summary h4 small {
+  margin-left: 4px;
+  color: #7d8b9b;
+  font-size: 9px;
+  font-weight: 500;
+}
+.patient-summary p {
+  margin: 5px 0 0;
+  color: #7f8ea0;
+  font-size: 9px;
+}
+.drawer-urgent {
+  margin-left: auto;
+  height: 23px;
+  padding: 0 7px;
+  border-radius: 3px;
+  background: #fff0f0;
+  color: #c94343;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8.5px;
+  font-weight: 700;
+}
+.drawer-section {
+  padding: 17px 20px;
+  border-bottom: 1px solid #e7ebf0;
+}
+.drawer-section h5 {
+  margin: 0 0 12px;
+  font-size: 10px;
+  color: #53657a;
+}
+.drawer-section dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px 16px;
+}
+.drawer-section dl div {
+  min-width: 0;
+}
+.drawer-section dt {
+  font-size: 8px;
+  color: #93a0af;
+}
+.drawer-section dd {
+  margin: 4px 0 0;
+  font-size: 9.5px;
+  color: #34485e;
+  font-weight: 600;
+  white-space: normal;
+}
+.drawer-status-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 9px;
+  color: #708095;
+}
+.tech-assignment {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 9px;
+  color: #708095;
+}
+.tech-assignment select {
+  width: 225px;
+  height: 31px;
+  border: 1px solid #d9e1e9;
+  border-radius: 4px;
+  background: #fff;
+  padding: 0 7px;
+  color: #40556d;
+  font-size: 9px;
+  outline: none;
+}
+.assignment-rule {
+  margin: 9px 0 0;
+  padding: 7px 8px;
+  border-radius: 4px;
+  background: #eef5fb;
+  color: #3d6f9f;
+  font-size: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.memo-section p {
+  margin: 0;
+  padding: 10px;
+  border-radius: 4px;
+  background: #f7f9fb;
+  color: #657588;
+  font-size: 9px;
+  line-height: 1.5;
+}
+.drawer-actions {
+  margin-top: auto;
+  padding: 14px 18px 18px;
+  border-top: 1px solid #dfe6ee;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  background: #fff;
+}
+.drawer-actions button {
+  height: 34px;
+  border-radius: 4px;
+  border: 1px solid #d7e0e9;
+  background: #fff;
+  color: #4f6278;
+  font-size: 9px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.drawer-actions .action-start {
+  background: #2766ad;
+  border-color: #2766ad;
+  color: #fff;
+}
+.drawer-actions .action-complete {
+  background: #238760;
+  border-color: #238760;
+  color: #fff;
+}
+.drawer-actions .action-cancel {
+  color: #b74747;
+}
+.drawer-actions button:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.worklist-toast {
+  position: fixed;
+  z-index: 70;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  padding: 10px 15px;
+  border-radius: 5px;
+  background: #142d4c;
+  color: #fff;
+  box-shadow: 0 8px 24px #0a203b33;
+  font-size: 10px;
 }
 .menu-button,
 .mobile-close,

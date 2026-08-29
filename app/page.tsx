@@ -1,8 +1,11 @@
 'use client';
 import {
   Activity,
+  AlertTriangle,
+  Ban,
   Bell,
   CalendarDays,
+  CheckCircle2,
   ChevronDown,
   CircleDot,
   ClipboardList,
@@ -12,6 +15,7 @@ import {
   Menu,
   MonitorCog,
   MoreHorizontal,
+  Play,
   Radio,
   Search,
   Settings,
@@ -47,79 +51,205 @@ const kpis = [
   ['검사 완료', '91', '완료율 71.1%', 'green'],
   ['응급 검사', '5', '즉시 확인 필요', 'red'],
 ];
-const worklist = [
-  [
-    '202608-01482',
-    '김민준',
-    'Chest PA',
-    'X-ray 1',
-    '호흡기내과',
-    '이지훈',
-    '검사 중',
-  ],
-  [
-    '202608-01479',
-    '이서연',
-    'Brain CT (CE)',
-    'CT-01',
-    '신경외과',
-    '최유진',
-    '검사 대기',
-  ],
-  [
-    '202608-01471',
-    '박지우',
-    'L-spine MRI',
-    'MRI-01',
-    '정형외과',
-    '한성민',
-    '접수 완료',
-  ],
-  [
-    '202608-01466',
-    '최은지',
-    'Abdomen US',
-    'US-01',
-    '소화기내과',
-    '정다은',
-    '검사 중',
-  ],
-  [
-    '202608-01458',
-    '정현우',
-    'Knee AP/LAT',
-    'X-ray 2',
-    '정형외과',
-    '오세훈',
-    '검사 완료',
-  ],
-  [
-    '202608-01453',
-    '유지아',
-    'Mammography',
-    'MG-01',
-    '유방외과',
-    '송지은',
-    '검사 대기',
-  ],
-  [
-    '202608-01449',
-    '임도현',
-    'C-spine AP/LAT',
-    'X-ray 1',
-    '신경외과',
-    '이지훈',
-    '검사 완료',
-  ],
-  [
-    '202608-01437',
-    '서하준',
-    '건강검진 Chest PA',
-    '건강검진 X-ray',
-    '건강검진센터',
-    '박소연',
-    '검사 대기',
-  ],
+type Exam = {
+  id: string;
+  date: string;
+  time: string;
+  name: string;
+  sex: string;
+  age: number;
+  exam: string;
+  modality: string;
+  equipment: string;
+  department: string;
+  tech: string;
+  status: string;
+  urgent: boolean;
+  accession: string;
+  doctor: string;
+  memo: string;
+};
+const initialWorklist: Exam[] = [
+  {
+    id: '202608-01482',
+    date: '2026-08-29',
+    time: '08:35',
+    name: '김민준',
+    sex: '남',
+    age: 64,
+    exam: 'Chest PA',
+    modality: 'X-ray',
+    equipment: 'X-ray 1',
+    department: '호흡기내과',
+    tech: '이지훈',
+    status: '검사중',
+    urgent: false,
+    accession: 'ACC260829-1482',
+    doctor: '장태성',
+    memo: '호흡 시 움직임 주의',
+  },
+  {
+    id: '202608-01479',
+    date: '2026-08-29',
+    time: '08:42',
+    name: '이서연',
+    sex: '여',
+    age: 52,
+    exam: 'Brain CT (CE)',
+    modality: 'CT',
+    equipment: 'CT-01',
+    department: '신경외과',
+    tech: '최유진',
+    status: '대기',
+    urgent: true,
+    accession: 'ACC260829-1479',
+    doctor: '김도윤',
+    memo: '조영제 동의서 확인 완료',
+  },
+  {
+    id: '202608-01471',
+    date: '2026-08-29',
+    time: '09:00',
+    name: '박지우',
+    sex: '남',
+    age: 45,
+    exam: 'L-spine MRI',
+    modality: 'MRI',
+    equipment: 'MRI-01',
+    department: '정형외과',
+    tech: '한성민',
+    status: '접수',
+    urgent: false,
+    accession: 'ACC260829-1471',
+    doctor: '오정민',
+    memo: '금속성 임플란트 없음',
+  },
+  {
+    id: '202608-01466',
+    date: '2026-08-29',
+    time: '09:10',
+    name: '최은지',
+    sex: '여',
+    age: 38,
+    exam: 'Abdomen US',
+    modality: 'Ultrasound',
+    equipment: 'US-01',
+    department: '소화기내과',
+    tech: '정다은',
+    status: '검사중',
+    urgent: false,
+    accession: 'ACC260829-1466',
+    doctor: '이현수',
+    memo: '8시간 금식 확인',
+  },
+  {
+    id: '202608-01458',
+    date: '2026-08-29',
+    time: '09:20',
+    name: '정현우',
+    sex: '남',
+    age: 31,
+    exam: 'Knee AP/LAT',
+    modality: 'X-ray',
+    equipment: 'X-ray 2',
+    department: '정형외과',
+    tech: '오세훈',
+    status: '완료',
+    urgent: false,
+    accession: 'ACC260829-1458',
+    doctor: '오정민',
+    memo: '우측 슬관절',
+  },
+  {
+    id: '202608-01453',
+    date: '2026-08-29',
+    time: '09:35',
+    name: '유지아',
+    sex: '여',
+    age: 47,
+    exam: 'Mammography',
+    modality: 'Mammo',
+    equipment: 'MG-01',
+    department: '유방외과',
+    tech: '송지은',
+    status: '대기',
+    urgent: false,
+    accession: 'ACC260829-1453',
+    doctor: '신아영',
+    memo: 'Mammo 여성 방사선사 우선 배정',
+  },
+  {
+    id: '202608-01449',
+    date: '2026-08-29',
+    time: '09:50',
+    name: '임도현',
+    sex: '남',
+    age: 57,
+    exam: 'C-spine AP/LAT',
+    modality: 'X-ray',
+    equipment: 'X-ray 1',
+    department: '신경외과',
+    tech: '',
+    status: '예약',
+    urgent: true,
+    accession: 'ACC260829-1449',
+    doctor: '김도윤',
+    memo: '보호대 제거 후 촬영',
+  },
+  {
+    id: '202608-01437',
+    date: '2026-08-29',
+    time: '10:00',
+    name: '서하준',
+    sex: '남',
+    age: 42,
+    exam: '건강검진 Chest PA',
+    modality: 'X-ray',
+    equipment: '건강검진 X-ray',
+    department: '건강검진센터',
+    tech: '박소연',
+    status: '대기',
+    urgent: false,
+    accession: 'ACC260829-1437',
+    doctor: '검진의',
+    memo: '건강검진 전용 Worklist',
+  },
+  {
+    id: '202608-01421',
+    date: '2026-08-29',
+    time: '10:15',
+    name: '강수빈',
+    sex: '여',
+    age: 29,
+    exam: 'OR C-arm Guidance',
+    modality: 'C-arm',
+    equipment: 'C-arm · 수술실',
+    department: '수술실',
+    tech: '문정우',
+    status: '예약',
+    urgent: false,
+    accession: 'ACC260829-1421',
+    doctor: '윤성호',
+    memo: '수술방 3번',
+  },
+  {
+    id: '202608-01404',
+    date: '2026-08-29',
+    time: '10:30',
+    name: '조영희',
+    sex: '여',
+    age: 73,
+    exam: 'Portable Chest AP',
+    modality: 'Portable',
+    equipment: 'Portable X-ray',
+    department: '중환자실',
+    tech: '',
+    status: '취소',
+    urgent: false,
+    accession: 'ACC260829-1404',
+    doctor: '박진호',
+    memo: '환자 상태 변경으로 취소',
+  },
 ];
 const equipment = [
   ['X-ray 1', '1 / 1', '일반촬영용 · 정상', 1],
@@ -141,14 +271,27 @@ const staff = [
   ['정다은', 'US-01', '초음파'],
   ['송지은', 'MG-01', '유방촬영'],
 ];
+const techOptions = [
+  { name: '이지훈', gender: '남' },
+  { name: '오세훈', gender: '남' },
+  { name: '최유진', gender: '여' },
+  { name: '한성민', gender: '남' },
+  { name: '정다은', gender: '여' },
+  { name: '송지은', gender: '여' },
+  { name: '박소연', gender: '여' },
+  { name: '문정우', gender: '남' },
+];
 function Status({ s }: { s: string }) {
-  const t = s.includes('완료')
-    ? 'complete'
-    : s.includes('중')
-      ? 'progress'
-      : s.includes('대기')
-        ? 'waiting'
-        : 'ready';
+  const t =
+    s === '완료'
+      ? 'complete'
+      : s === '검사중'
+        ? 'progress'
+        : s === '대기'
+          ? 'waiting'
+          : s === '취소'
+            ? 'cancelled'
+            : 'ready';
   return (
     <span className={`status ${t}`}>
       <i />
@@ -161,12 +304,58 @@ export default function Home() {
   const [active, setActive] = useState('Dashboard'),
     [side, setSide] = useState(false),
     [query, setQuery] = useState(''),
-    [room, setRoom] = useState('전체 장비/검사실');
-  const rows = worklist.filter(
-    (r) =>
-      r.some((c) => c.toLowerCase().includes(query.toLowerCase())) &&
-      (room === '전체 장비/검사실' || r[3] === room),
-  );
+    [room, setRoom] = useState('전체 장비'),
+    [date, setDate] = useState('2026-08-29'),
+    [modality, setModality] = useState('전체 Modality'),
+    [examStatus, setExamStatus] = useState('전체 상태'),
+    [exams, setExams] = useState(initialWorklist),
+    [selectedId, setSelectedId] = useState<string | null>(null),
+    [notice, setNotice] = useState('');
+  const selected = exams.find((exam) => exam.id === selectedId) ?? null;
+  const rows = exams.filter((exam) => {
+    const keyword = query.trim().toLowerCase();
+    const matchesKeyword =
+      !keyword ||
+      exam.id.toLowerCase().includes(keyword) ||
+      exam.name.toLowerCase().includes(keyword);
+    return (
+      matchesKeyword &&
+      exam.date === date &&
+      (room === '전체 장비' || exam.equipment === room) &&
+      (modality === '전체 Modality' || exam.modality === modality) &&
+      (examStatus === '전체 상태' || exam.status === examStatus)
+    );
+  });
+  const updateExam = (id: string, patch: Partial<Exam>) => {
+    setExams((current) =>
+      current.map((exam) => (exam.id === id ? { ...exam, ...patch } : exam)),
+    );
+    setNotice('변경사항이 Worklist에 반영되었습니다.');
+    setTimeout(() => setNotice(''), 2200);
+  };
+  const assignTech = (exam: Exam, tech: string) => {
+    if (
+      exam.modality === 'Mammo' &&
+      techOptions.find((item) => item.name === tech)?.gender !== '여'
+    ) {
+      setNotice('Mammo는 여성 방사선사를 기본 배정해야 합니다.');
+      return;
+    }
+    const duplicate = exams.some(
+      (item) =>
+        item.id !== exam.id &&
+        item.tech === tech &&
+        item.date === exam.date &&
+        item.time === exam.time &&
+        item.status !== '완료' &&
+        item.status !== '취소',
+    );
+    if (duplicate) {
+      setNotice(`${tech} 방사선사는 동일 시간에 이미 배정되어 있습니다.`);
+      return;
+    }
+    updateExam(exam.id, { tech });
+  };
   return (
     <main className="app-shell">
       <aside className={`sidebar ${side ? 'open' : ''}`}>
@@ -302,30 +491,94 @@ export default function Home() {
                     <input
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Worklist 검색"
+                      placeholder="환자번호 / 환자명"
                     />
                   </label>
-                  <div className="room-filter">
-                    <ListFilter size={14} />
-                    <select aria-label="장비 및 검사실 필터" value={room} onChange={(e) => setRoom(e.target.value)}>
-                      <option>전체 장비/검사실</option>
-                      <option>X-ray 1</option>
-                      <option>X-ray 2</option>
-                      <option>건강검진 X-ray</option>
-                    </select>
-                  </div>
                 </div>
+              </div>
+              <div className="advanced-filters">
+                <label className="date-filter">
+                  <CalendarDays size={14} />
+                  <input
+                    aria-label="검사일자"
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                </label>
+                <div className="select-filter">
+                  <Radio size={14} />
+                  <select
+                    aria-label="Modality 필터"
+                    value={modality}
+                    onChange={(e) => setModality(e.target.value)}
+                  >
+                    <option>전체 Modality</option>
+                    {[
+                      'X-ray',
+                      'CT',
+                      'MRI',
+                      'Ultrasound',
+                      'Mammo',
+                      'C-arm',
+                      'Portable',
+                    ].map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="select-filter">
+                  <Activity size={14} />
+                  <select
+                    aria-label="검사상태 필터"
+                    value={examStatus}
+                    onChange={(e) => setExamStatus(e.target.value)}
+                  >
+                    <option>전체 상태</option>
+                    {['예약', '접수', '대기', '검사중', '완료', '취소'].map(
+                      (item) => (
+                        <option key={item}>{item}</option>
+                      ),
+                    )}
+                  </select>
+                </div>
+                <div className="select-filter equipment-filter">
+                  <MonitorCog size={14} />
+                  <select
+                    aria-label="장비 필터"
+                    value={room}
+                    onChange={(e) => setRoom(e.target.value)}
+                  >
+                    <option>전체 장비</option>
+                    {equipment.map((item) => (
+                      <option key={item[0] as string}>{item[0]}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  className="reset-filter"
+                  onClick={() => {
+                    setQuery('');
+                    setModality('전체 Modality');
+                    setExamStatus('전체 상태');
+                    setRoom('전체 장비');
+                  }}
+                >
+                  초기화
+                </button>
               </div>
               <div className="table-wrap">
                 <table>
                   <thead>
                     <tr>
                       {[
+                        '구분',
+                        '검사일시',
                         '환자번호',
                         '환자명',
                         '검사명',
+                        'Modality',
                         '장비',
-                        '진료과',
                         '담당 방사선사',
                         '검사 상태',
                       ].map((h) => (
@@ -334,19 +587,57 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((r) => (
-                      <tr key={r[0]}>
-                        {r.slice(0, 6).map((c, i) => (
-                          <td key={i}>
-                            {i === 0 ? (
-                              <button className="patient-id">{c}</button>
-                            ) : (
-                              c
-                            )}
-                          </td>
-                        ))}
+                    {rows.map((exam) => (
+                      <tr
+                        key={exam.id}
+                        onClick={() => setSelectedId(exam.id)}
+                        className={
+                          exam.equipment === '건강검진 X-ray'
+                            ? 'screening-row'
+                            : ''
+                        }
+                      >
                         <td>
-                          <Status s={r[6]} />
+                          {exam.urgent ? (
+                            <span className="urgent-flag">
+                              <AlertTriangle size={11} />
+                              응급
+                            </span>
+                          ) : exam.equipment === '건강검진 X-ray' ? (
+                            <span className="screening-flag">검진</span>
+                          ) : (
+                            <span className="routine-flag">일반</span>
+                          )}
+                        </td>
+                        <td>
+                          <strong className="exam-time">
+                            {exam.date.slice(5)} {exam.time}
+                          </strong>
+                        </td>
+                        <td>
+                          <button
+                            className="patient-id"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {exam.id}
+                          </button>
+                        </td>
+                        <td>
+                          {exam.name}
+                          <small className="patient-meta">
+                            {exam.sex}/{exam.age}
+                          </small>
+                        </td>
+                        <td>{exam.exam}</td>
+                        <td>{exam.modality}</td>
+                        <td>{exam.equipment}</td>
+                        <td>
+                          {exam.tech || (
+                            <span className="unassigned">미배정</span>
+                          )}
+                        </td>
+                        <td>
+                          <Status s={exam.status} />
                         </td>
                       </tr>
                     ))}
@@ -357,7 +648,7 @@ export default function Home() {
                 )}
               </div>
               <div className="table-footer">
-                <span>총 128건 중 1–8건</span>
+                <span>검색 결과 {rows.length}건 · 전체 128건</span>
                 <div>
                   <button disabled>이전</button>
                   <button className="current">1</button>
@@ -421,6 +712,166 @@ export default function Home() {
           </div>
         </div>
       </section>
+      {selected && (
+        <>
+          <button
+            className="drawer-backdrop"
+            aria-label="상세정보 닫기"
+            onClick={() => setSelectedId(null)}
+          />
+          <aside className="exam-drawer" aria-label="환자 검사 상세정보">
+            <div className="drawer-header">
+              <div>
+                <span className="drawer-kicker">EXAM DETAIL</span>
+                <h3>검사 상세정보</h3>
+              </div>
+              <button onClick={() => setSelectedId(null)} aria-label="닫기">
+                <X size={19} />
+              </button>
+            </div>
+            <div className="patient-summary">
+              <div className="patient-avatar">{selected.name[0]}</div>
+              <div>
+                <h4>
+                  {selected.name}{' '}
+                  <small>
+                    {selected.sex}/{selected.age}세
+                  </small>
+                </h4>
+                <p>
+                  {selected.id} · {selected.department}
+                </p>
+              </div>
+              {selected.urgent && (
+                <span className="drawer-urgent">
+                  <AlertTriangle size={12} />
+                  응급검사
+                </span>
+              )}
+            </div>
+            <section className="drawer-section">
+              <h5>검사 정보</h5>
+              <dl>
+                <div>
+                  <dt>검사명</dt>
+                  <dd>{selected.exam}</dd>
+                </div>
+                <div>
+                  <dt>Accession No.</dt>
+                  <dd>{selected.accession}</dd>
+                </div>
+                <div>
+                  <dt>검사일시</dt>
+                  <dd>
+                    {selected.date} {selected.time}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Modality</dt>
+                  <dd>{selected.modality}</dd>
+                </div>
+                <div>
+                  <dt>장비 / 검사실</dt>
+                  <dd>{selected.equipment}</dd>
+                </div>
+                <div>
+                  <dt>처방의</dt>
+                  <dd>{selected.doctor}</dd>
+                </div>
+              </dl>
+            </section>
+            <section className="drawer-section">
+              <h5>검사 진행</h5>
+              <div className="drawer-status-line">
+                <span>현재 상태</span>
+                <Status s={selected.status} />
+              </div>
+              <label className="tech-assignment">
+                <span>담당 방사선사</span>
+                <select
+                  value={selected.tech}
+                  onChange={(e) => assignTech(selected, e.target.value)}
+                >
+                  <option value="">미배정</option>
+                  {techOptions.map((tech) => {
+                    const occupied = exams.some(
+                      (item) =>
+                        item.id !== selected.id &&
+                        item.tech === tech.name &&
+                        item.date === selected.date &&
+                        item.time === selected.time &&
+                        item.status !== '완료' &&
+                        item.status !== '취소',
+                    );
+                    const mammoBlocked =
+                      selected.modality === 'Mammo' && tech.gender !== '여';
+                    return (
+                      <option
+                        key={tech.name}
+                        value={tech.name}
+                        disabled={occupied || mammoBlocked}
+                      >
+                        {tech.name} ({tech.gender})
+                        {occupied ? ' · 동시간 배정' : ''}
+                        {mammoBlocked ? ' · Mammo 배정 불가' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+              {selected.modality === 'Mammo' && (
+                <p className="assignment-rule">
+                  <ShieldCheck size={13} />
+                  Mammo 여성 방사선사 기본 배정 규칙 적용 중
+                </p>
+              )}
+            </section>
+            <section className="drawer-section memo-section">
+              <h5>검사 메모</h5>
+              <p>{selected.memo}</p>
+            </section>
+            <div className="drawer-actions">
+              <button
+                className="action-receive"
+                disabled={selected.status !== '예약'}
+                onClick={() => updateExam(selected.id, { status: '접수' })}
+              >
+                <ClipboardList size={14} />
+                접수
+              </button>
+              <button
+                className="action-start"
+                disabled={!['접수', '대기'].includes(selected.status)}
+                onClick={() => updateExam(selected.id, { status: '검사중' })}
+              >
+                <Play size={14} />
+                검사 시작
+              </button>
+              <button
+                className="action-complete"
+                disabled={selected.status !== '검사중'}
+                onClick={() => updateExam(selected.id, { status: '완료' })}
+              >
+                <CheckCircle2 size={14} />
+                검사 완료
+              </button>
+              <button
+                className="action-cancel"
+                disabled={['완료', '취소'].includes(selected.status)}
+                onClick={() => updateExam(selected.id, { status: '취소' })}
+              >
+                <Ban size={14} />
+                검사 취소
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
+      {notice && (
+        <div className="worklist-toast" role="status">
+          {notice}
+        </div>
+      )}
     </main>
   );
 }
