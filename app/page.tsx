@@ -320,16 +320,19 @@ export default function Home() {
     [includeCompleted, setIncludeCompleted] = useState(false),
     [patientQuery, setPatientQuery] = useState(''),
     [patientResult, setPatientResult] = useState<Exam | null>(null),
-    [orderExam, setOrderExam] = useState({
-      modality: 'X-ray',
-      exam: 'Chest PA',
-      department: '호흡기내과',
-      doctor: '장태성',
-      priority: '일반',
-    }),
     [callQueues, setCallQueues] = useState<Record<string, string[]>>({}),
     [callingId, setCallingId] = useState<string | null>(null);
   const selected = exams.find((exam) => exam.id === selectedId) ?? null;
+  // 검사 오더 등록 모듈은 비활성화되어 기존 Worklist/환자 조회만 유지합니다.
+  const orderExam = {
+    modality: 'X-ray',
+    exam: '',
+    department: '',
+    doctor: '',
+    priority: '일반',
+  };
+  const setOrderExam = (_value: typeof orderExam) => undefined;
+  const registerOrder = () => undefined;
   const rows = exams.filter((exam) => {
     const keyword = query.trim().toLowerCase();
     const matchesKeyword =
@@ -431,33 +434,6 @@ export default function Home() {
           exam.name.toLowerCase().includes(value),
       ) ?? null,
     );
-  };
-  const registerOrder = () => {
-    const base = patientResult ?? exams[0];
-    const newExam: Exam = {
-      id: `202608-${String(exams.length + 1500).padStart(5, '0')}`,
-      date: '2026-08-29',
-      time: '11:00',
-      name: base.name,
-      sex: base.sex,
-      age: base.age,
-      exam: orderExam.exam,
-      modality: orderExam.modality,
-      equipment:
-        orderExam.modality === 'X-ray' ? 'X-ray 1' : `${orderExam.modality}-01`,
-      department: orderExam.department,
-      tech: '',
-      status: '예약',
-      urgent: orderExam.priority === '응급',
-      accession: `ACC260829-${exams.length + 1500}`,
-      doctor: orderExam.doctor,
-      memo: '신규 오더 등록',
-    };
-    setExams((current) => [newExam, ...current]);
-    setPatientResult(newExam);
-    setNotice('신규 검사 오더가 등록되어 Worklist에 반영되었습니다.');
-    setActive('Dashboard');
-    setTimeout(() => setNotice(''), 2600);
   };
   return (
     <main className="app-shell">
@@ -577,12 +553,6 @@ export default function Home() {
                         {patientResult.id} · {patientResult.date} 등록
                       </p>
                     </div>
-                    <button
-                      className="primary-small"
-                      onClick={() => setActive('검사 오더')}
-                    >
-                      + 신규 검사 오더
-                    </button>
                   </div>
                   <div className="patient-info-grid">
                     <div>
@@ -645,7 +615,7 @@ export default function Home() {
             </div>
           </div>
         )}
-        {active === '검사 오더' && (
+        {false && active === '검사 오더' && (
           <div className="module-overlay">
             <div className="module-card order-card">
               <div className="module-head">
