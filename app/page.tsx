@@ -31,7 +31,7 @@ import { useState } from 'react';
 const navItems = [
   ['Dashboard', LayoutDashboard],
   ['환자 조회', Search],
-  ['검사 예약', CalendarDays],
+  ['예약 조회', CalendarDays],
   ['X-ray', Radio],
   ['CT', CircleDot],
   ['MRI', Activity],
@@ -694,13 +694,13 @@ export default function Home() {
             </div>
           </div>
         )}
-        {active === '검사 예약' && (
+        {active === '예약 조회' && (
           <div className="module-overlay">
             <div className="module-card order-card">
               <div className="module-head">
                 <div>
                   <span>HIS / EMR PRESCRIPTIONS</span>
-                  <h2>검사 예약</h2>
+                  <h2>예약 조회</h2>
                   <p>HIS/EMR에서 발행된 처방을 선택해 예약합니다.</p>
                 </div>
                 <button onClick={() => setActive('Dashboard')}>
