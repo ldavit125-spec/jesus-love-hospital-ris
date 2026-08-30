@@ -357,6 +357,7 @@ export default function Home() {
   const [reportSelectedId, setReportSelectedId] = useState<string | null>(null);
   const [reportTexts, setReportTexts] = useState<Record<string, string>>({});
   const [reportRole] = useState<'전문의' | '방사선사'>('전문의');
+  const [prepChecks, setPrepChecks] = useState<Record<string, string>>({});
   const selected = exams.find((exam) => exam.id === selectedId) ?? null;
   const reservationSlots = ['09:00', '09:30', '10:00', '10:30', '11:00'];
   const reservationConflict = exams.some(
@@ -392,6 +393,30 @@ export default function Home() {
   );
   const reportSelected =
     exams.find((exam) => exam.id === reportSelectedId) ?? null;
+  const prepItems =
+    selected?.modality === 'CT'
+      ? [
+          '조영제 사용 여부',
+          '조영제 알레르기 여부',
+          '신장기능 확인',
+          '금식 여부',
+          '정맥주사(IV) 확보 여부',
+          '임신 가능성',
+          '휠체어 / 보행보조 여부',
+        ]
+      : [
+          '조영제 사용 여부',
+          '조영제 알레르기 및 신장기능 확인',
+          '임신 가능성',
+          '심박동기 등 체내 전자기기',
+          '인공관절 / 금속 임플란트',
+          '수술용 클립 / 코일 / 스텐트',
+          '체내 금속성 고정물',
+          '금속성 이물질 여부',
+          '보청기 등 제거 필요 물품',
+          '휠체어 / 이동 보조 필요 여부',
+          '폐쇄공포증 여부',
+        ];
   const registerReservation = () => {
     if (!reservationPatient || !reservationExam || reservationConflict) return;
     const source = exams.find((exam) => exam.id === reservationPatient);
@@ -1554,6 +1579,41 @@ export default function Home() {
                 </div>
               </dl>
             </section>
+            {(selected.modality === 'CT' || selected.modality === 'MRI') && (
+              <section className="drawer-section">
+                <h5>검사 전 확인사항</h5>
+                <div className="prep-check-list">
+                  {prepItems.map((item) => (
+                    <label
+                      key={item}
+                      className={
+                        prepChecks[`${selected.id}-${item}`] === '미확인'
+                          ? 'warning'
+                          : ''
+                      }
+                    >
+                      <span>{item}</span>
+                      <select
+                        value={prepChecks[`${selected.id}-${item}`] ?? '미확인'}
+                        onChange={(e) =>
+                          setPrepChecks({
+                            ...prepChecks,
+                            [`${selected.id}-${item}`]: e.target.value,
+                          })
+                        }
+                      >
+                        <option>확인</option>
+                        <option>미확인</option>
+                        <option>해당없음</option>
+                      </select>
+                      {prepChecks[`${selected.id}-${item}`] !== '확인' && (
+                        <AlertTriangle size={13} />
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </section>
+            )}
             <section className="drawer-section prescription-section">
               <h5>
                 처방 정보 <small>HIS / EMR · 읽기 전용</small>
