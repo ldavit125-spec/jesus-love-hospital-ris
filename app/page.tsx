@@ -1236,7 +1236,7 @@ export default function Home() {
                         <strong>{e[0]}</strong>
                         <small>{e[2]}</small>
                       </div>
-                      <b>{e[1]}</b>
+                      <b aria-hidden="true" />
                       <i className={!e[3] ? 'warn' : ''} />
                     </div>
                   ))}
