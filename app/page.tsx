@@ -351,6 +351,12 @@ export default function Home() {
   const [reservationSelectedId, setReservationSelectedId] = useState<
     string | null
   >(null);
+  const [reportQuery, setReportQuery] = useState('');
+  const [reportModality, setReportModality] = useState('전체 Modality');
+  const [reportStatus, setReportStatus] = useState('전체 판독상태');
+  const [reportSelectedId, setReportSelectedId] = useState<string | null>(null);
+  const [reportTexts, setReportTexts] = useState<Record<string, string>>({});
+  const [reportRole] = useState<'전문의' | '방사선사'>('전문의');
   const selected = exams.find((exam) => exam.id === selectedId) ?? null;
   const reservationSlots = ['09:00', '09:30', '10:00', '10:30', '11:00'];
   const reservationConflict = exams.some(
@@ -371,6 +377,21 @@ export default function Home() {
         exam.modality === reservationModality),
   );
   const todayReservationCount = reservationRows.length;
+  const reportRows = exams.filter(
+    (exam) =>
+      exam.status === '완료' &&
+      (!reportQuery ||
+        exam.name.includes(reportQuery) ||
+        exam.id.includes(reportQuery)) &&
+      (reportModality === '전체 Modality' ||
+        exam.modality === reportModality) &&
+      (reportStatus === '전체 판독상태' ||
+        (reportStatus === '판독완료'
+          ? !!reportTexts[exam.id]
+          : !reportTexts[exam.id])),
+  );
+  const reportSelected =
+    exams.find((exam) => exam.id === reportSelectedId) ?? null;
   const registerReservation = () => {
     if (!reservationPatient || !reservationExam || reservationConflict) return;
     const source = exams.find((exam) => exam.id === reservationPatient);
@@ -820,6 +841,135 @@ export default function Home() {
                   선택 예약:{' '}
                   {exams.find((e) => e.id === reservationSelectedId)?.name}
                 </p>
+              )}
+            </div>
+          </div>
+        )}
+        {active === '판독 관리' && (
+          <div className="module-overlay">
+            <div className="module-card order-card">
+              <div className="module-head">
+                <div>
+                  <span>RADIOLOGY REPORTING</span>
+                  <h2>판독 관리</h2>
+                  <p>
+                    완료 검사 {reportRows.length}건 · 영상의학과 전문의 판독
+                    화면
+                  </p>
+                </div>
+                <button onClick={() => setActive('Dashboard')}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="advanced-filters">
+                <input
+                  placeholder="환자명 / 환자번호"
+                  value={reportQuery}
+                  onChange={(e) => setReportQuery(e.target.value)}
+                />
+                <select
+                  value={reportModality}
+                  onChange={(e) => setReportModality(e.target.value)}
+                >
+                  <option>전체 Modality</option>
+                  {[
+                    'X-ray',
+                    'CT',
+                    'MRI',
+                    'Ultrasound',
+                    'Mammo',
+                    'C-arm',
+                    'Portable',
+                  ].map((m) => (
+                    <option key={m}>{m}</option>
+                  ))}
+                </select>
+                <select
+                  value={reportStatus}
+                  onChange={(e) => setReportStatus(e.target.value)}
+                >
+                  <option>전체 판독상태</option>
+                  <option>판독대기</option>
+                  <option>판독중</option>
+                  <option>판독완료</option>
+                </select>
+              </div>
+              <div className="reservation-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      {[
+                        '환자번호',
+                        '환자명',
+                        '검사명',
+                        'Modality',
+                        '검사일시',
+                        '진료과',
+                        '담당의',
+                        '판독 상태',
+                      ].map((h) => (
+                        <th key={h}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportRows.map((exam) => (
+                      <tr
+                        key={exam.id}
+                        onClick={() => setReportSelectedId(exam.id)}
+                      >
+                        <td>{exam.id}</td>
+                        <td>{exam.name}</td>
+                        <td>{exam.exam}</td>
+                        <td>{exam.modality}</td>
+                        <td>
+                          {exam.date} {exam.time}
+                        </td>
+                        <td>{exam.department}</td>
+                        <td>{exam.doctor}</td>
+                        <td>
+                          <Status
+                            s={reportTexts[exam.id] ? '판독완료' : '판독대기'}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {reportSelected && (
+                <div className="report-editor">
+                  <p>
+                    {reportSelected.name} · {reportSelected.exam} ·{' '}
+                    <button
+                      onClick={() => setNotice('PACS 영상 조회를 시작합니다.')}
+                    >
+                      PACS 영상 조회
+                    </button>
+                  </p>
+                  <textarea
+                    disabled={reportRole !== '전문의'}
+                    value={reportTexts[reportSelected.id] ?? ''}
+                    onChange={(e) =>
+                      setReportTexts({
+                        ...reportTexts,
+                        [reportSelected.id]: e.target.value,
+                      })
+                    }
+                    placeholder={
+                      reportRole === '전문의'
+                        ? '판독문을 작성하세요.'
+                        : '방사선사는 판독 결과만 조회할 수 있습니다.'
+                    }
+                  />
+                  <button
+                    className="register-order"
+                    disabled={reportRole !== '전문의'}
+                    onClick={() => setNotice('판독문이 저장되었습니다.')}
+                  >
+                    판독 완료
+                  </button>
+                </div>
               )}
             </div>
           </div>
