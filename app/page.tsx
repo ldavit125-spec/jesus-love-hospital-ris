@@ -1582,31 +1582,33 @@ export default function Home() {
                     ))}
                   </div>
                 </section>
-                <section className="panel">
-                  <div className="panel-header compact">
-                    <div>
-                      <h3>오늘의 방사선사 배치</h3>
-                      <p>근무자 8명 · 현재 7명</p>
-                    </div>
-                    <button className="text-button">배정관리</button>
-                  </div>
-                  <div className="staff-list">
-                    {staff.map((s, i) => (
-                      <div className="staff-row" key={s[0]}>
-                        <div className={`avatar a${i}`}>{s[0][0]}</div>
-                        <div>
-                          <strong>{s[0]}</strong>
-                          <small>{s[2]}</small>
-                        </div>
-                        <span>{s[1]}</span>
+                {false && (
+                  <section className="panel">
+                    <div className="panel-header compact">
+                      <div>
+                        <h3>오늘의 방사선사 배치</h3>
+                        <p>근무자 8명 · 현재 7명</p>
                       </div>
-                    ))}
-                  </div>
-                  <button className="staff-more">
-                    <UsersRound size={15} />
-                    근무자 2명 더보기
-                  </button>
-                </section>
+                      <button className="text-button">배정관리</button>
+                    </div>
+                    <div className="staff-list">
+                      {staff.map((s, i) => (
+                        <div className="staff-row" key={s[0]}>
+                          <div className={`avatar a${i}`}>{s[0][0]}</div>
+                          <div>
+                            <strong>{s[0]}</strong>
+                            <small>{s[2]}</small>
+                          </div>
+                          <span>{s[1]}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button className="staff-more">
+                      <UsersRound size={15} />
+                      근무자 2명 더보기
+                    </button>
+                  </section>
+                )}
               </aside>
             )}
           </div>
