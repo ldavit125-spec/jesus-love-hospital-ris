@@ -521,7 +521,9 @@ export default function Home() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       if ('AudioContext' in window) {
-        const audioContext = new AudioContext();
+        const AudioContextClass = window.AudioContext;
+        if (!AudioContextClass) return;
+        const audioContext = new AudioContextClass();
         [660, 880].forEach((frequency, index) => {
           const oscillator = audioContext.createOscillator();
           const gain = audioContext.createGain();
@@ -534,7 +536,7 @@ export default function Home() {
           oscillator.stop(start + 0.16);
         });
       }
-      const utterance = new SpeechSynthesisUtterance(
+      const utterance = new window.SpeechSynthesisUtterance(
         `${exam.name} 환자분, ${roomLabel}로 들어와 주시기 바랍니다.`,
       );
       utterance.lang = 'ko-KR';
