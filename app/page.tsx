@@ -352,6 +352,9 @@ export default function Home() {
     string | null
   >(null);
   const selected = exams.find((exam) => exam.id === selectedId) ?? null;
+  const todayReservationCount = exams.filter(
+    (exam) => exam.date === date,
+  ).length;
   const reservationSlots = ['09:00', '09:30', '10:00', '10:30', '11:00'];
   const reservationConflict = exams.some(
     (exam) =>
@@ -553,7 +556,7 @@ export default function Home() {
             >
               <Icon size={17} />
               <span>{label}</span>
-              {i === 2 && <em>6</em>}
+              {label === '예약 조회' && <em>{todayReservationCount}</em>}
             </button>
           ))}
         </nav>
@@ -711,7 +714,9 @@ export default function Home() {
                 <div>
                   <span>HIS / EMR PRESCRIPTIONS</span>
                   <h2>예약 조회</h2>
-                  <p>HIS/EMR에서 발행된 처방을 선택해 예약합니다.</p>
+                  <p>
+                    오늘 전체 예약 {todayReservationCount}건 · HIS/EMR 예약 조회
+                  </p>
                 </div>
                 <button onClick={() => setActive('Dashboard')}>
                   <X size={18} />
