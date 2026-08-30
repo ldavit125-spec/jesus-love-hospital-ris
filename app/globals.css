@@ -406,6 +406,34 @@ nav button em {
 .dashboard-grid.worklist-full {
   grid-template-columns: minmax(0, 1fr);
 }
+.staff-summary {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 14px;
+  border-top: 1px solid var(--border);
+}
+.staff-summary div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.staff-summary strong {
+  font-size: 20px;
+  color: #163f6b;
+}
+.staff-summary small {
+  color: #718096;
+  font-size: 11px;
+}
+.staff-summary .form-error {
+  margin: 0;
+  font-size: 11px;
+}
+.right-rail .staff-list,
+.right-rail .staff-more {
+  display: none;
+}
 .panel {
   background: #fff;
   border: 1px solid var(--border);

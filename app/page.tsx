@@ -1582,7 +1582,7 @@ export default function Home() {
                     ))}
                   </div>
                 </section>
-                {false && (
+                {true && (
                   <section className="panel">
                     <div className="panel-header compact">
                       <div>
@@ -1590,6 +1590,23 @@ export default function Home() {
                         <p>근무자 8명 · 현재 7명</p>
                       </div>
                       <button className="text-button">배정관리</button>
+                    </div>
+                    <div className="staff-summary">
+                      <div>
+                        <strong>7명</strong>
+                        <small>배치 완료 인원</small>
+                      </div>
+                      <div>
+                        <strong>2대</strong>
+                        <small>미배정 장비 수</small>
+                      </div>
+                      <div>
+                        <strong>1명</strong>
+                        <small>휴무/부재 인원</small>
+                      </div>
+                      <p className="form-error">
+                        ⚠ 미배정 또는 중복 배정 발생 시 확인 필요
+                      </p>
                     </div>
                     <div className="staff-list">
                       {staff.map((s, i) => (
