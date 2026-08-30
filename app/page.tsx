@@ -605,14 +605,23 @@ export default function Home() {
   const liveKpis = kpis.map((item) =>
     item[0] === '오늘 검사'
       ? [item[0], String(todayExams.length), item[2], item[3]]
-      : item[0] === '검사 완료'
+      : item[0] === '검사 대기'
         ? [
             item[0],
-            String(todayExams.filter((exam) => exam.status === '완료').length),
+            String(todayExams.filter((exam) => exam.status === '대기').length),
             item[2],
             item[3],
           ]
-        : item,
+        : item[0] === '검사 완료'
+          ? [
+              item[0],
+              String(
+                todayExams.filter((exam) => exam.status === '완료').length,
+              ),
+              item[2],
+              item[3],
+            ]
+          : item,
   );
   return (
     <main className="app-shell">
