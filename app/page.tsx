@@ -34,7 +34,7 @@ const navItems = [
   ['예약 조회', CalendarDays],
   ['검사 Worklist', ClipboardList],
   ['판독 관리', ClipboardList],
-  ['방사선사 배정', UsersRound],
+  ['근무 현황', UsersRound],
   ['장비 관리', MonitorCog],
   ['시스템 설정', Settings],
 ] as const;
@@ -913,13 +913,13 @@ export default function Home() {
             </div>
           </div>
         )}
-        {active === '방사선사 배정' && (
+        {active === '근무 현황' && (
           <div className="module-overlay">
             <div className="module-card order-card">
               <div className="module-head">
                 <div>
                   <span>STAFF ASSIGNMENT</span>
-                  <h2>방사선사 배정</h2>
+                  <h2>근무 현황</h2>
                   <p>날짜·근무조별 장비 배정 현황</p>
                 </div>
                 <button onClick={() => setActive('Dashboard')}>
