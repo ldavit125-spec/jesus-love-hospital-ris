@@ -1598,7 +1598,7 @@ export default function Home() {
                     ))}
                   </div>
                 </section>
-                {true && (
+                {false && (
                   <section className="panel">
                     <div className="panel-header compact">
                       <div>
