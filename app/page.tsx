@@ -546,6 +546,19 @@ export default function Home() {
       ) ?? null,
     );
   };
+  const todayExams = exams.filter((exam) => exam.date === date);
+  const liveKpis = kpis.map((item) =>
+    item[0] === '오늘 검사'
+      ? [item[0], String(todayExams.length), item[2], item[3]]
+      : item[0] === '검사 완료'
+        ? [
+            item[0],
+            String(todayExams.filter((exam) => exam.status === '완료').length),
+            item[2],
+            item[3],
+          ]
+        : item,
+  );
   return (
     <main className="app-shell">
       <aside className={`sidebar ${side ? 'open' : ''}`}>
@@ -1102,7 +1115,7 @@ export default function Home() {
             </div>
           </div>
           <section className="kpi-grid">
-            {kpis.map((k) => (
+            {liveKpis.map((k) => (
               <article className={`kpi-card ${k[3]}`} key={k[0]}>
                 <div>
                   {k[0]}
