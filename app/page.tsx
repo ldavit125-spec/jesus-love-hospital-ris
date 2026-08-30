@@ -435,17 +435,17 @@ export default function Home() {
       window.speechSynthesis.cancel();
       if ('AudioContext' in window) {
         const audioContext = new AudioContext();
-        const oscillator = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        oscillator.frequency.value = 880;
-        gain.gain.setValueAtTime(0.05, audioContext.currentTime);
-        gain.gain.exponentialRampToValueAtTime(
-          0.001,
-          audioContext.currentTime + 0.16,
-        );
-        oscillator.connect(gain).connect(audioContext.destination);
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.16);
+        [660, 880].forEach((frequency, index) => {
+          const oscillator = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          const start = audioContext.currentTime + index * 0.14;
+          oscillator.frequency.value = frequency;
+          gain.gain.setValueAtTime(0.05, start);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.16);
+          oscillator.connect(gain).connect(audioContext.destination);
+          oscillator.start(start);
+          oscillator.stop(start + 0.16);
+        });
       }
       const utterance = new SpeechSynthesisUtterance(
         `${exam.name} 환자분, ${roomLabel}로 들어와 주시기 바랍니다.`,
