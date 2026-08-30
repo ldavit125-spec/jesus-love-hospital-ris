@@ -1,0 +1,6 @@
+{
+  "buildCommand": "vite build && node -e \"require('fs').cpSync('dist', '.output', { recursive: true })\"",
+  "outputDirectory": ".output",
+  "framework": null,
+  "installCommand": "npm install"
+}
