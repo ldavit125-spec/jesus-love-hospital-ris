@@ -358,6 +358,11 @@ export default function Home() {
   const [reportTexts, setReportTexts] = useState<Record<string, string>>({});
   const [reportRole] = useState<'전문의' | '방사선사'>('전문의');
   const [prepChecks, setPrepChecks] = useState<Record<string, string>>({});
+  const [assignDate, setAssignDate] = useState('2026-08-29');
+  const [assignShift, setAssignShift] = useState('주간');
+  const [assignTechName, setAssignTechName] = useState('');
+  const [assignEquipment, setAssignEquipment] = useState('X-ray 1');
+  const [assignments, setAssignments] = useState<Record<string, string>>({});
   const selected = exams.find((exam) => exam.id === selectedId) ?? null;
   const reservationSlots = ['09:00', '09:30', '10:00', '10:30', '11:00'];
   const reservationConflict = exams.some(
@@ -393,6 +398,26 @@ export default function Home() {
   );
   const reportSelected =
     exams.find((exam) => exam.id === reportSelectedId) ?? null;
+  const assignSave = () => {
+    if (!assignTechName) return;
+    const tech = techOptions.find((t) => t.name === assignTechName);
+    if (assignEquipment === 'MG-01' && tech?.gender !== '여') return;
+    const duplicate = Object.entries(assignments).some(
+      ([key, value]) =>
+        key.startsWith(`${assignDate}|${assignShift}|`) &&
+        value === assignTechName &&
+        !key.endsWith(`|${assignEquipment}`),
+    );
+    if (duplicate) {
+      setNotice('동일 시간대 중복 배정을 차단했습니다.');
+      return;
+    }
+    setAssignments({
+      ...assignments,
+      [`${assignDate}|${assignShift}|${assignEquipment}`]: assignTechName,
+    });
+    setNotice('방사선사 배정이 저장되었습니다.');
+  };
   const prepItems =
     selected?.modality === 'CT'
       ? [
@@ -880,6 +905,86 @@ export default function Home() {
                   {exams.find((e) => e.id === reservationSelectedId)?.name}
                 </p>
               )}
+            </div>
+          </div>
+        )}
+        {active === '방사선사 배정' && (
+          <div className="module-overlay">
+            <div className="module-card order-card">
+              <div className="module-head">
+                <div>
+                  <span>STAFF ASSIGNMENT</span>
+                  <h2>방사선사 배정</h2>
+                  <p>날짜·근무조별 장비 배정 현황</p>
+                </div>
+                <button onClick={() => setActive('Dashboard')}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="order-form">
+                <label>
+                  날짜
+                  <input
+                    type="date"
+                    value={assignDate}
+                    onChange={(e) => setAssignDate(e.target.value)}
+                  />
+                </label>
+                <label>
+                  근무조
+                  <select
+                    value={assignShift}
+                    onChange={(e) => setAssignShift(e.target.value)}
+                  >
+                    <option>주간</option>
+                    <option>야간</option>
+                    <option>당직</option>
+                  </select>
+                </label>
+                <label>
+                  방사선사
+                  <select
+                    value={assignTechName}
+                    onChange={(e) => setAssignTechName(e.target.value)}
+                  >
+                    <option value="">선택</option>
+                    {techOptions.map((t) => (
+                      <option key={t.name} value={t.name}>
+                        {t.name} ({t.gender})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  담당 장비
+                  <select
+                    value={assignEquipment}
+                    onChange={(e) => setAssignEquipment(e.target.value)}
+                  >
+                    {equipment.map((e) => (
+                      <option key={e[0]} value={e[0]}>
+                        {e[0]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="equipment-list">
+                {equipment.map((e) => (
+                  <div className="equipment-row" key={e[0]}>
+                    <div>
+                      <strong>{e[0]}</strong>
+                      <small>
+                        {assignments[`${assignDate}|${assignShift}|${e[0]}`] ??
+                          '미배정 · 경고'}
+                      </small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button className="register-order" onClick={assignSave}>
+                배정 저장
+              </button>
             </div>
           </div>
         )}
