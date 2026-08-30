@@ -59,6 +59,11 @@ const kpis = [
   ['검사 완료', '91', '', 'green'],
   ['응급 검사', '5', '즉시 확인 필요', 'red'],
 ];
+const prepComplete = prepItems.every((item) =>
+  ['확인 완료', '해당 없음'].includes(
+    prepChecks[`${selected?.id}-${item}`] ?? '',
+  ),
+);
 type Exam = {
   id: string;
   date: string;
@@ -1718,7 +1723,10 @@ export default function Home() {
                     >
                       <span>{item}</span>
                       <select
-                        value={prepChecks[`${selected.id}-${item}`] ?? '미확인'}
+                        value={
+                          prepChecks[`${selected.id}-${item}`] ??
+                          '추가 확인 필요'
+                        }
                         onChange={(e) =>
                           setPrepChecks({
                             ...prepChecks,
@@ -1726,8 +1734,8 @@ export default function Home() {
                           })
                         }
                       >
-                        <option>확인</option>
-                        <option>미확인</option>
+                        <option>확인 완료</option>
+                        <option>추가 확인 필요</option>
                         <option>해당없음</option>
                       </select>
                       {prepChecks[`${selected.id}-${item}`] !== '확인' && (
@@ -1863,6 +1871,10 @@ export default function Home() {
             <div className="drawer-actions">
               <button
                 className="action-start"
+                disabled={
+                  (selected.modality === 'CT' || selected.modality === 'MRI') &&
+                  !prepComplete
+                }
                 disabled={selected.status !== '대기'}
                 onClick={() => updateExam(selected.id, { status: '검사중' })}
               >
