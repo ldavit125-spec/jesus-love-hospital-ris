@@ -403,6 +403,9 @@ nav button em {
   gap: 15px;
   align-items: start;
 }
+.dashboard-grid.worklist-full {
+  grid-template-columns: minmax(0, 1fr);
+}
 .panel {
   background: #fff;
   border: 1px solid var(--border);

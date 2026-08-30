@@ -969,7 +969,9 @@ export default function Home() {
               </article>
             ))}
           </section>
-          <div className="dashboard-grid">
+          <div
+            className={`dashboard-grid ${active === '검사 Worklist' ? 'worklist-full' : ''}`}
+          >
             <section className="panel worklist-panel">
               <div className="panel-header">
                 <div>
@@ -1261,57 +1263,59 @@ export default function Home() {
                 <span>검색 결과 {rows.length}건 · 전체 128건</span>
               </div>
             </section>
-            <aside className="right-rail">
-              <section className="panel">
-                <div className="panel-header compact">
-                  <div>
-                    <h3>장비 현황</h3>
-                    <p>총 10대 · 9대 가용</p>
-                  </div>
-                  <button className="text-button">전체보기</button>
-                </div>
-                <div className="equipment-list">
-                  {equipment.map((e) => (
-                    <div className="equipment-row" key={e[0] as string}>
-                      <span className={!e[3] ? 'warning' : ''}>
-                        <MonitorCog size={16} />
-                      </span>
-                      <div>
-                        <strong>{e[0]}</strong>
-                        <small>{e[2]}</small>
-                      </div>
-                      <b aria-hidden="true" />
-                      <i className={!e[3] ? 'warn' : ''} />
+            {active !== '검사 Worklist' && (
+              <aside className="right-rail">
+                <section className="panel">
+                  <div className="panel-header compact">
+                    <div>
+                      <h3>장비 현황</h3>
+                      <p>총 10대 · 9대 가용</p>
                     </div>
-                  ))}
-                </div>
-              </section>
-              <section className="panel">
-                <div className="panel-header compact">
-                  <div>
-                    <h3>오늘의 방사선사 배치</h3>
-                    <p>근무자 8명 · 현재 7명</p>
+                    <button className="text-button">전체보기</button>
                   </div>
-                  <button className="text-button">배정관리</button>
-                </div>
-                <div className="staff-list">
-                  {staff.map((s, i) => (
-                    <div className="staff-row" key={s[0]}>
-                      <div className={`avatar a${i}`}>{s[0][0]}</div>
-                      <div>
-                        <strong>{s[0]}</strong>
-                        <small>{s[2]}</small>
+                  <div className="equipment-list">
+                    {equipment.map((e) => (
+                      <div className="equipment-row" key={e[0] as string}>
+                        <span className={!e[3] ? 'warning' : ''}>
+                          <MonitorCog size={16} />
+                        </span>
+                        <div>
+                          <strong>{e[0]}</strong>
+                          <small>{e[2]}</small>
+                        </div>
+                        <b aria-hidden="true" />
+                        <i className={!e[3] ? 'warn' : ''} />
                       </div>
-                      <span>{s[1]}</span>
+                    ))}
+                  </div>
+                </section>
+                <section className="panel">
+                  <div className="panel-header compact">
+                    <div>
+                      <h3>오늘의 방사선사 배치</h3>
+                      <p>근무자 8명 · 현재 7명</p>
                     </div>
-                  ))}
-                </div>
-                <button className="staff-more">
-                  <UsersRound size={15} />
-                  근무자 2명 더보기
-                </button>
-              </section>
-            </aside>
+                    <button className="text-button">배정관리</button>
+                  </div>
+                  <div className="staff-list">
+                    {staff.map((s, i) => (
+                      <div className="staff-row" key={s[0]}>
+                        <div className={`avatar a${i}`}>{s[0][0]}</div>
+                        <div>
+                          <strong>{s[0]}</strong>
+                          <small>{s[2]}</small>
+                        </div>
+                        <span>{s[1]}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <button className="staff-more">
+                    <UsersRound size={15} />
+                    근무자 2명 더보기
+                  </button>
+                </section>
+              </aside>
+            )}
           </div>
         </div>
       </section>
