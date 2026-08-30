@@ -1554,6 +1554,43 @@ export default function Home() {
                 </div>
               </dl>
             </section>
+            <section className="drawer-section prescription-section">
+              <h5>
+                처방 정보 <small>HIS / EMR · 읽기 전용</small>
+              </h5>
+              <dl className="detail-grid">
+                <div>
+                  <dt>처방일시</dt>
+                  <dd>
+                    {selected.date} {selected.time}
+                  </dd>
+                </div>
+                <div>
+                  <dt>처방의</dt>
+                  <dd>{selected.doctor}</dd>
+                </div>
+                <div>
+                  <dt>진료과</dt>
+                  <dd>{selected.department}</dd>
+                </div>
+                <div>
+                  <dt>검사 처방명</dt>
+                  <dd>{selected.exam}</dd>
+                </div>
+                <div>
+                  <dt>검사 목적 / 임상정보</dt>
+                  <dd>{selected.memo || '임상정보 없음'}</dd>
+                </div>
+                <div>
+                  <dt>우선순위</dt>
+                  <dd>{selected.urgent ? '응급' : '일반'}</dd>
+                </div>
+                <div>
+                  <dt>처방 메모</dt>
+                  <dd>{selected.memo || '처방 메모 없음'}</dd>
+                </div>
+              </dl>
+            </section>
             <section className="drawer-section">
               <h5>검사 진행</h5>
               <div className="drawer-status-line">
