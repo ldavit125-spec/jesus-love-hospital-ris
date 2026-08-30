@@ -1261,13 +1261,6 @@ export default function Home() {
               </div>
               <div className="table-footer">
                 <span>검색 결과 {rows.length}건 · 전체 128건</span>
-                <div>
-                  <button disabled>이전</button>
-                  <button className="current">1</button>
-                  <button>2</button>
-                  <button>3</button>
-                  <button>다음</button>
-                </div>
               </div>
             </section>
             <aside className="right-rail">
