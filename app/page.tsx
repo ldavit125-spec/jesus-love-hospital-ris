@@ -1711,6 +1711,11 @@ export default function Home() {
             {(selected.modality === 'CT' || selected.modality === 'MRI') && (
               <section className="drawer-section">
                 <h5>검사 전 확인사항</h5>
+                <strong
+                  className={prepComplete ? 'status-ok' : 'status-warning'}
+                >
+                  {prepComplete ? '검사 가능' : '확인 필요'}
+                </strong>
                 <div className="prep-check-list">
                   {prepItems.map((item) => (
                     <label
