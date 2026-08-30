@@ -352,6 +352,11 @@ export default function Home() {
   const [reservationRoom, setReservationRoom] = useState('X-ray 1');
   const [reservationDate, setReservationDate] = useState('2026-08-29');
   const [reservationTime, setReservationTime] = useState('09:00');
+  const [reservationModality, setReservationModality] =
+    useState('전체 Modality');
+  const [reservationSelectedId, setReservationSelectedId] = useState<
+    string | null
+  >(null);
   const selected = exams.find((exam) => exam.id === selectedId) ?? null;
   const reservationSlots = ['09:00', '09:30', '10:00', '10:30', '11:00'];
   const reservationConflict = exams.some(
@@ -359,6 +364,17 @@ export default function Home() {
       exam.equipment === reservationRoom &&
       exam.date === reservationDate &&
       exam.time === reservationTime,
+  );
+  const reservationRows = exams.filter(
+    (exam) =>
+      exam.date === reservationDate &&
+      (!reservationPatient ||
+        `${exam.id} ${exam.name}`
+          .toLowerCase()
+          .includes(reservationPatient.toLowerCase())) &&
+      (reservationRoom === '전체 장비' || exam.equipment === reservationRoom) &&
+      (reservationModality === '전체 Modality' ||
+        exam.modality === reservationModality),
   );
   const registerReservation = () => {
     if (!reservationPatient || !reservationExam || reservationConflict) return;
@@ -717,12 +733,24 @@ export default function Home() {
                   />
                 </label>
                 <label>
-                  검사명
-                  <input
-                    value={reservationExam}
-                    onChange={(e) => setReservationExam(e.target.value)}
-                    placeholder="검사명을 입력하세요"
-                  />
+                  Modality
+                  <select
+                    value={reservationModality}
+                    onChange={(e) => setReservationModality(e.target.value)}
+                  >
+                    <option>전체 Modality</option>
+                    {[
+                      'X-ray',
+                      'CT',
+                      'MRI',
+                      'Ultrasound',
+                      'Mammo',
+                      'C-arm',
+                      'Portable',
+                    ].map((m) => (
+                      <option key={m}>{m}</option>
+                    ))}
+                  </select>
                 </label>
                 <label>
                   검사일
@@ -747,29 +775,55 @@ export default function Home() {
                       ))}
                   </select>
                 </label>
-                <label>
-                  예약시간
-                  <input
-                    value={reservationTime}
-                    onChange={(e) => setReservationTime(e.target.value)}
-                    placeholder="예: 09:30"
-                  />
-                </label>
               </div>
-              {reservationConflict && (
-                <p className="form-error">
-                  동일 검사실에 이미 예약된 시간입니다.
+              <div className="reservation-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      {[
+                        '예약시간',
+                        '환자번호',
+                        '환자명',
+                        '검사명',
+                        '검사실',
+                        '진료과',
+                        '담당의',
+                        '예약 상태',
+                      ].map((h) => (
+                        <th key={h}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reservationRows.map((exam) => (
+                      <tr
+                        key={exam.id}
+                        onClick={() => setReservationSelectedId(exam.id)}
+                      >
+                        <td>{exam.time}</td>
+                        <td>{exam.id}</td>
+                        <td>{exam.name}</td>
+                        <td>{exam.exam}</td>
+                        <td>{roomName(exam.equipment)}</td>
+                        <td>{exam.department}</td>
+                        <td>{exam.doctor}</td>
+                        <td>
+                          <Status s={exam.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!reservationRows.length && (
+                  <div className="empty">예약 결과가 없습니다.</div>
+                )}
+              </div>
+              {reservationSelectedId && (
+                <p className="drawer-note">
+                  선택 예약:{' '}
+                  {exams.find((e) => e.id === reservationSelectedId)?.name}
                 </p>
               )}
-              <button
-                className="register-order"
-                disabled={
-                  !reservationPatient || !reservationExam || reservationConflict
-                }
-                onClick={registerReservation}
-              >
-                예약 완료 · Worklist 연동
-              </button>
             </div>
           </div>
         )}
