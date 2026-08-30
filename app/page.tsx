@@ -59,11 +59,6 @@ const kpis = [
   ['검사 완료', '91', '', 'green'],
   ['응급 검사', '5', '즉시 확인 필요', 'red'],
 ];
-const prepComplete = prepItems.every((item) =>
-  ['확인 완료', '해당 없음'].includes(
-    prepChecks[`${selected?.id}-${item}`] ?? '',
-  ),
-);
 type Exam = {
   id: string;
   date: string;
@@ -368,6 +363,10 @@ export default function Home() {
   const [assignTechName, setAssignTechName] = useState('');
   const [assignEquipment, setAssignEquipment] = useState('X-ray 1');
   const [assignments, setAssignments] = useState<Record<string, string>>({});
+  const [equipmentSelected, setEquipmentSelected] = useState<string | null>(null);
+  const [systemSettings, setSystemSettings] = useState({ hospital: '예수사랑병원', ris: '예수사랑병원 RIS', ttsRate: '0.9', ttsPitch: '1.0', defaultStatus: '대기', alerts: true });
+  const [equipmentStatuses, setEquipmentStatuses] = useState<Record<string, string>>({});
+  const equipmentStatusOptions = ['정상', '사용중', '점검예정', '점검중', '고장', '사용중지'];
   const selected = exams.find((exam) => exam.id === selectedId) ?? null;
   const reservationSlots = ['09:00', '09:30', '10:00', '10:30', '11:00'];
   const reservationConflict = exams.some(
@@ -447,6 +446,30 @@ export default function Home() {
           '휠체어 / 이동 보조 필요 여부',
           '폐쇄공포증 여부',
         ];
+  const prepComplete = prepItems.every((item) =>
+    ['확인 완료', '해당 없음'].includes(
+      prepChecks[`${selected?.id}-${item}`] ?? '',
+    ),
+  );
+  const assignedTechForEquipment = (equipmentName: string) =>
+    assignments[`${assignDate}|${assignShift}|${equipmentName}`] ??
+    assignments[
+      `${assignDate}|${assignShift}|${({ 'CT-01': 'CT', 'MR-01': 'MRI', 'US-01': 'Ultrasound', 'MG-01': 'Mammo' } as Record<string, string>)[equipmentName] ?? equipmentName}`
+    ] ??
+    exams.find(
+      (exam) =>
+        exam.date === assignDate &&
+        (exam.equipment === equipmentName ||
+          (equipmentName === 'CT' && exam.equipment === 'CT-01') ||
+          (equipmentName === 'MRI' && exam.equipment === 'MR-01') ||
+          (equipmentName === 'Ultrasound' && exam.equipment === 'US-01') ||
+          (equipmentName === 'Mammo' && exam.equipment === 'MG-01')) &&
+        Boolean(exam.tech),
+    )?.tech ??
+    '';
+  const assignedTechFor = (exam: Exam) =>
+    assignments[`${exam.date}|${assignShift}|${exam.equipment}`] ??
+    assignedTechForEquipment(exam.equipment);
   const registerReservation = () => {
     if (!reservationPatient || !reservationExam || reservationConflict) return;
     const source = exams.find((exam) => exam.id === reservationPatient);
@@ -806,7 +829,7 @@ export default function Home() {
           </div>
         )}
         {active === '예약 조회' && (
-          <div className="module-overlay">
+          <div className="module-overlay reservation-page">
             <div className="module-card order-card">
               <div className="module-head">
                 <div>
@@ -816,9 +839,6 @@ export default function Home() {
                     오늘 전체 예약 {todayReservationCount}건 · HIS/EMR 예약 조회
                   </p>
                 </div>
-                <button onClick={() => setActive('Dashboard')}>
-                  <X size={18} />
-                </button>
               </div>
               <div className="order-form">
                 <label>
@@ -924,6 +944,18 @@ export default function Home() {
             </div>
           </div>
         )}
+        {active === '시스템 설정' && (
+          <div className="module-overlay settings-page"><div className="module-card order-card"><div className="module-head"><div><span>SYSTEM SETTINGS</span><h2>시스템 설정</h2><p>RIS 운영 환경 및 연동 설정</p></div></div><div className="order-form"><label>병원명<input value={systemSettings.hospital} onChange={(e) => setSystemSettings({ ...systemSettings, hospital: e.target.value })} /></label><label>RIS 시스템명<input value={systemSettings.ris} onChange={(e) => setSystemSettings({ ...systemSettings, ris: e.target.value })} /></label><label>TTS 음성<select><option>젊은 한국어 여성 안내방송</option></select></label><label>TTS 속도<input type="number" step="0.1" min="0.5" max="1.5" value={systemSettings.ttsRate} onChange={(e) => setSystemSettings({ ...systemSettings, ttsRate: e.target.value })} /></label><label>TTS 음높이<input type="number" step="0.1" min="0.5" max="1.5" value={systemSettings.ttsPitch} onChange={(e) => setSystemSettings({ ...systemSettings, ttsPitch: e.target.value })} /></label><label>검사 상태 기본값<select value={systemSettings.defaultStatus} onChange={(e) => setSystemSettings({ ...systemSettings, defaultStatus: e.target.value })}><option>대기</option><option>검사중</option><option>완료</option></select></label><label>알림 설정<select value={systemSettings.alerts ? '사용' : '미사용'} onChange={(e) => setSystemSettings({ ...systemSettings, alerts: e.target.value === '사용' })}><option>사용</option><option>미사용</option></select></label></div><div className="detail-box"><strong>연동 상태</strong><p>HIS / EMR / PACS: 정상 · 시스템 버전 v1.0.0 · 마지막 동기화 10:42:18</p><p>로그인 세션·보안 및 사용자 권한은 병원 정책에 따라 적용됩니다.</p></div><button className="register-order" onClick={() => setNotice('시스템 설정이 저장되었습니다.')}>설정 저장</button></div></div>
+        )}
+        {active === '장비 관리' && (
+          <div className="module-overlay">
+            <div className="module-card order-card">
+              <div className="module-head"><div><span>EQUIPMENT MANAGEMENT</span><h2>장비 관리</h2><p>장비 상태 및 점검 이력</p></div><button onClick={() => setActive('Dashboard')}><X size={18} /></button></div>
+              <div className="reservation-table-wrap"><table><thead><tr>{['장비명','장비 코드','Modality','설치 위치','현재 상태','최근 점검일','다음 점검 예정일','제조사 / 모델명'].map((h) => <th key={h}>{h}</th>)}</tr></thead><tbody>{equipment.map((e) => { const name = e[0] as string; const status = equipmentStatuses[name] ?? (String(e[2]).includes('점검') ? '점검예정' : String(e[2]).includes('중') ? '사용중' : '정상'); return <tr key={name} onClick={() => setEquipmentSelected(name)}><td>{name}</td><td>{name}</td><td>{name.includes('CT') ? 'CT' : name.includes('MRI') ? 'MRI' : name.includes('Mammo') ? 'Mammo' : name.includes('Ultrasound') ? 'Ultrasound' : name.includes('C-arm') ? 'C-arm' : name.includes('Portable') ? 'Portable' : 'X-ray'}</td><td>{roomName(name)}</td><td><select value={status} onChange={(ev) => setEquipmentStatuses((s) => ({ ...s, [name]: ev.target.value }))}>{equipmentStatusOptions.map((option) => <option key={option}>{option}</option>)}</select></td><td>2026-08-01</td><td>2026-09-01</td><td>예수사랑병원 표준 장비</td></tr>; })}</tbody></table></div>
+              {equipmentSelected && <div className="detail-box"><strong>{equipmentSelected} 상세정보</strong><p>점검 이력: 정기 점검 완료 · 다음 점검 예정일 2026-09-01</p><button onClick={() => setEquipmentSelected(null)}>닫기</button></div>}
+            </div>
+          </div>
+        )}
         {active === '근무 현황' && (
           <div className="module-overlay">
             <div className="module-card order-card">
@@ -931,7 +963,7 @@ export default function Home() {
                 <div>
                   <span>STAFF ASSIGNMENT</span>
                   <h2>근무 현황</h2>
-                  <p>날짜·근무조별 장비 배정 현황</p>
+                  <p>날짜별 장비 배정 현황</p>
                 </div>
                 <button onClick={() => setActive('Dashboard')}>
                   <X size={18} />
@@ -945,17 +977,6 @@ export default function Home() {
                     value={assignDate}
                     onChange={(e) => setAssignDate(e.target.value)}
                   />
-                </label>
-                <label>
-                  근무조
-                  <select
-                    value={assignShift}
-                    onChange={(e) => setAssignShift(e.target.value)}
-                  >
-                    <option>주간</option>
-                    <option>야간</option>
-                    <option>당직</option>
-                  </select>
                 </label>
                 <label>
                   방사선사
@@ -991,8 +1012,7 @@ export default function Home() {
                     <div>
                       <strong>{e[0]}</strong>
                       <small>
-                        {assignments[`${assignDate}|${assignShift}|${e[0]}`] ??
-                          '미배정 · 경고'}
+                        {assignedTechForEquipment(e[0]) || '미배정 · 경고'}
                       </small>
                     </div>
                   </div>
@@ -1249,7 +1269,7 @@ export default function Home() {
             </div>
           </div>
         )}
-        <div className="content">
+        {(active === 'Dashboard' || active === '검사 Worklist') && <div className={`content ${active === '검사 Worklist' ? 'worklist-page' : ''}`}>
           <div className="page-heading">
             <div>
               <h2>오늘의 검사 현황</h2>
@@ -1528,7 +1548,7 @@ export default function Home() {
                         <td>{exam.modality}</td>
                         <td>{roomName(exam.equipment)}</td>
                         <td>
-                          {exam.tech || (
+                          {assignedTechFor(exam) || (
                             <span className="unassigned">미배정</span>
                           )}
                         </td>
@@ -1590,7 +1610,7 @@ export default function Home() {
                         </span>
                         <div>
                           <strong>{e[0]}</strong>
-                          <small>{e[2]}</small>
+                          <small>{equipmentStatuses[e[0] as string] ?? e[2]}</small>
                         </div>
                         <b aria-hidden="true" />
                         <i className={!e[3] ? 'warn' : ''} />
@@ -1598,7 +1618,7 @@ export default function Home() {
                     ))}
                   </div>
                 </section>
-                {true && (
+                {false && (
                   <section className="panel">
                     <div className="panel-header compact">
                       <div>
@@ -1645,7 +1665,7 @@ export default function Home() {
               </aside>
             )}
           </div>
-        </div>
+        </div>}
       </section>
       {selected && (
         <>
