@@ -1,5 +1,5 @@
 import { sites } from '@openai/sites-vite-plugin';
-import tailwindcss from '@tailwindcss/postcss';
+import tailwindcss from '@tailwindcss/vite';
 import vinext from 'vinext';
 import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
@@ -47,12 +47,12 @@ export default defineConfig(async () => {
   const { cloudflare } = await import('@cloudflare/vite-plugin');
 
   return {
-    css: { postcss: { plugins: [tailwindcss()] } },
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,
     plugins: [
       vinext(),
+      tailwindcss(),
       sites(),
       ...(isVercel ? [nitro()] : [cloudflare({
         viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
