@@ -352,9 +352,6 @@ export default function Home() {
     string | null
   >(null);
   const selected = exams.find((exam) => exam.id === selectedId) ?? null;
-  const todayReservationCount = exams.filter(
-    (exam) => exam.date === date,
-  ).length;
   const reservationSlots = ['09:00', '09:30', '10:00', '10:30', '11:00'];
   const reservationConflict = exams.some(
     (exam) =>
@@ -373,6 +370,7 @@ export default function Home() {
       (reservationModality === '전체 Modality' ||
         exam.modality === reservationModality),
   );
+  const todayReservationCount = reservationRows.length;
   const registerReservation = () => {
     if (!reservationPatient || !reservationExam || reservationConflict) return;
     const source = exams.find((exam) => exam.id === reservationPatient);
