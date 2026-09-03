@@ -55,20 +55,81 @@ export interface Exam {
   updatedAt?: FirestoreDateTime;
 }
 
+// Safety Checklist Item check status: '확인 완료' | '해당 없음' | '추가 확인 필요' | '미확인'
+export type ChecklistItemStatus = '확인 완료' | '해당 없음' | '추가 확인 필요' | '미확인';
+
+// Overall Checklist clearance status: '검사 가능' | '확인 필요' | '검사 보류'
+export type ChecklistOverallStatus = '검사 가능' | '확인 필요' | '검사 보류';
+
+// MRI Safety Device/Implant Classification: MR Safe | MR Conditional | 미확인 | 해당 없음
+export type MrCompatibilityStatus = 'MR Safe' | 'MR Conditional' | '미확인' | '해당 없음';
+
+// Detailed MR Conditional Verification Details
+export interface MrConditionalVerificationDetails {
+  verified: boolean; // MR Conditional 조건 확인 완료 여부
+  deviceManufacturer?: string; // 확인한 제조사
+  deviceModel?: string; // 확인한 모델명
+  allowedFieldStrength?: string; // 허용 자기장 조건 (예: 1.5T only, up to 3.0T 등)
+  specificAbsorptionRateLimit?: string; // SAR 제한 조건
+  spatialGradientLimit?: string; // 공간 자장 기울기 조건
+  notes?: string; // 기타 제조사 조건 확인 메모
+  verifiedBy?: string; // 확인자 (의사/전문방사선사 ID 또는 이름)
+  verifiedAt?: FirestoreDateTime; // 확인 일시
+}
+
 export interface ExamChecklist {
   id?: string;
   examId: string;
   patientId: string;
   modality: 'CT' | 'MRI';
-  fastingConfirmed?: boolean; // 금식 여부
-  contrastConsentConfirmed?: boolean; // 조영제 동의서
-  kidneyFunctionChecked?: boolean; // eGFR/Creatinine 확인 여부
+  
+  // Overall safety verdict
+  overallStatus?: ChecklistOverallStatus; // '검사 가능' | '확인 필요' | '검사 보류'
+
+  // CT Specific Protocol Configurations (검사 프로토콜별 필수 검증 항목 정의)
+  ctProtocol?: {
+    requiresContrast?: boolean; // 조영제 필수 여부
+    requiresFasting?: boolean;  // 금식 필수 여부
+    requiresIvAccess?: boolean; // IV 정맥라인 필수 여부
+    requiresKidneyFunction?: boolean; // 신장기능 필수 여부
+  };
+
+  // Common Safety Items
+  usesContrast?: boolean; // 조영제 사용 여부
+  contrastAllergy?: ChecklistItemStatus; // 조영제 알레르기 여부
+  kidneyFunction?: ChecklistItemStatus; // 신장기능 (eGFR/Creatinine) 확인
   creatinineLevel?: string;
-  pacemakerOrImplantCheck?: boolean; // 심박조율기/체내 금속 여부 (MRI)
-  claustrophobia?: boolean; // 폐쇄공포증 여부
+  pregnancyRisk?: ChecklistItemStatus; // 임신 가능성
+  mobilityStatus?: ChecklistItemStatus; // 이동/체위/휠체어 보행보조 가능 여부
+
+  // CT Specific Items
+  fastingConfirmed?: ChecklistItemStatus; // 금식 여부
+  ivAccessConfirmed?: ChecklistItemStatus; // 정맥주사(IV) 확보 여부
+  contrastConsentConfirmed?: ChecklistItemStatus; // 조영제 동의서 확인 여부
+
+  // MRI Specific Items & Compatibility Classifications
+  pacemakerOrElectronics?: ChecklistItemStatus; // 심박조율기/체내 전자기기
+  pacemakerMrStatus?: MrCompatibilityStatus; // 심박조율기 MR 안전성 분류
+  pacemakerConditionalDetails?: MrConditionalVerificationDetails; // 조율기 MR Conditional 조건 검증 세부정보
+  
+  metallicImplants?: ChecklistItemStatus; // 금속성 보형물/삽입물 (인공관절 등)
+  implantMrStatus?: MrCompatibilityStatus; // 보형물 MR 안전성 분류 ('MR Safe' | 'MR Conditional' | '미확인')
+  implantConditionalDetails?: MrConditionalVerificationDetails; // 보형물 MR Conditional 조건 검증 세부정보
+  mrConditionalRequirementsVerified?: boolean; // MR Conditional 조건 최종 확인 여부
+  mriCompatibilityConfirmed?: boolean; // 최종 호환성 확인 여부
+
+  clipsCoilsStents?: ChecklistItemStatus; // 클립/코일/스텐트
+  clipsMrStatus?: MrCompatibilityStatus;
+  clipsConditionalDetails?: MrConditionalVerificationDetails;
+
+  internalFixations?: ChecklistItemStatus; // 체내 고정물
+  foreignMetalBodies?: ChecklistItemStatus; // 금속성 이물
+  removableMetalsHearingAids?: ChecklistItemStatus; // 보청기 등 제거 가능한 금속
+  claustrophobia?: ChecklistItemStatus; // 폐쇄공포증 여부
   preMedicationGiven?: boolean; // 전처치 투약 여부
-  verifiedBy: string; // 확인자 (방사선사 ID)
-  verifiedAt: FirestoreDateTime;
+
+  verifiedBy?: string; // 확인자 (방사선사 ID 또는 이름)
+  verifiedAt?: FirestoreDateTime;
   notes?: string;
 }
 
@@ -89,78 +150,72 @@ export interface Report {
 }
 
 export interface Equipment {
-  id: string; // 장비 식별자 (예: 'xray-1', 'ct-01')
-  name: string; // 장비명 (예: 'X-ray 1', 'CT-01')
+  id?: string;
+  equipmentId: string; // DR-01, CT-01, MR-01 등
+  name: string;
   modality: ModalityType;
-  room: string; // 설치실 (예: '제1촬영실', 'CT실')
-  status: '정상가동' | '검사중' | '점검중' | '비가동';
-  ipAddress?: string;
-  aeTitle?: string;
-  port?: number;
+  roomName: string;
+  status: '정상' | '점검중' | '고장' | '사용중지';
   lastInspectionDate?: string;
-  updatedAt?: FirestoreDateTime;
+  nextInspectionDate?: string;
+  notes?: string;
 }
 
 export interface EquipmentInspection {
   id?: string;
   equipmentId: string;
-  equipmentName: string;
-  inspectorId: string;
+  inspectionDate: string;
   inspectorName: string;
-  inspectionType: '일일점검' | '정기점검' | '긴급수리';
-  result: '정상' | '요주의' | '사용불가';
-  itemsChecked: { [key: string]: boolean };
-  remarks?: string;
-  inspectedAt: FirestoreDateTime;
+  result: '적합' | '주의' | '부적합';
+  checklistDetails?: Record<string, boolean>;
+  notes?: string;
+  createdAt?: FirestoreDateTime;
 }
 
 export interface Staff {
-  id: string; // Firebase Auth UID
-  staffNumber: string; // 사번
+  id?: string;
+  staffId: string;
   name: string;
-  email: string;
-  role: UserRole; // 'radiographer' | 'radiologist' | 'admin'
-  department: string; // 부서 (영상의학팀 등)
-  phoneNumber?: string;
-  isActive: boolean;
-  createdAt?: FirestoreDateTime;
-  updatedAt?: FirestoreDateTime;
+  role: UserRole;
+  gender: 'M' | 'F';
+  modalityAssigned?: ModalityType[];
+  phone?: string;
+  status: '재직' | '휴가' | '퇴사';
 }
 
 export interface WorkSchedule {
   id?: string;
+  date: string;
+  shift: '주간' | '야간' | '당직';
   staffId: string;
   staffName: string;
-  role: UserRole;
-  date: string; // YYYY-MM-DD
-  shiftType: '데이' | '이브닝' | '나이트' | '당직' | '휴무';
-  assignedRoom?: string; // 담당 촬영실
+  equipmentId: string;
+  modality: ModalityType;
   createdAt?: FirestoreDateTime;
 }
 
 export interface Reservation {
   id?: string;
+  reservationId: string;
   patientId: string;
   patientName: string;
+  reservationDate: string;
+  reservationTime: string;
   modality: ModalityType;
+  equipmentId: string;
   examName: string;
-  reservationDate: string; // YYYY-MM-DD
-  reservationTime: string; // HH:mm
-  status: '예약' | '접수완료' | '취소';
-  department: string;
+  status: '예약완료' | '방문확인' | '취소' | '노쇼';
   notes?: string;
+  createdAt?: FirestoreDateTime;
 }
 
 export interface SystemSettings {
   id?: string;
   hospitalName: string;
-  autoInterpretationTransition: boolean; // 검사 완료 시 자동 판독대기 전환 플래그
-  criticalNotificationEnabled: boolean;
-  pacsServerConfig?: {
-    aeTitle: string;
-    host: string;
-    port: number;
-  };
+  risTitle: string;
+  ttsRate: number;
+  ttsPitch: number;
+  defaultStatus: ExamStatus;
+  alertsEnabled: boolean;
   updatedAt?: FirestoreDateTime;
-  updatedBy?: string;
 }

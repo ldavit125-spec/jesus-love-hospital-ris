@@ -66,12 +66,12 @@ button {
 }
 .brand strong {
   display: block;
-  font-size: 15px;
+  font-size: 16px;
 }
 .brand small {
   display: block;
   margin-top: 3px;
-  font-size: 8px;
+  font-size: 10px;
   color: #9db0c7;
   text-transform: uppercase;
 }
@@ -83,7 +83,7 @@ button {
   padding: 9px 10px;
   border-radius: 5px;
   background: #ffffff0f;
-  font-size: 11px;
+  font-size: 13px;
   color: #d6e0ec;
 }
 .hospital-chip small {
@@ -93,8 +93,8 @@ button {
 .hospital-chip i,
 .system-state i,
 .sync i {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #48d59a;
   box-shadow: 0 0 0 3px #48d59a1f;
@@ -106,7 +106,7 @@ nav {
 nav button {
   position: relative;
   width: 100%;
-  height: 37px;
+  height: 40px;
   padding: 0 12px;
   border: 0;
   border-radius: 5px;
@@ -115,7 +115,7 @@ nav button {
   gap: 11px;
   color: #b7c6d8;
   background: transparent;
-  font-size: 12px;
+  font-size: 13.5px;
   text-align: left;
 }
 nav button:hover {
@@ -131,14 +131,14 @@ nav button.active {
 nav button em {
   margin-left: auto;
   min-width: 18px;
-  height: 17px;
+  height: 18px;
   padding: 0 5px;
   border-radius: 9px;
   background: #e96b65;
   color: #fff;
   display: grid;
   place-items: center;
-  font-size: 9px;
+  font-size: 11px;
   font-style: normal;
 }
 .sidebar-footer {
@@ -183,16 +183,16 @@ nav button em {
 }
 .topbar-left h1 {
   margin: 0;
-  font-size: 17px;
+  font-size: 20px;
 }
 .topbar-left p {
   margin: 3px 0 0;
   color: #8b98a9;
-  font-size: 10px;
+  font-size: 13px;
 }
 .global-search {
   width: min(390px, 30vw);
-  height: 36px;
+  height: 38px;
   border: 1px solid #d8e1ea;
   background: #f8fafc;
   border-radius: 5px;
@@ -208,10 +208,10 @@ nav button em {
   border: 0;
   outline: none;
   background: transparent;
-  font-size: 11px;
+  font-size: 13px;
 }
 .global-search kbd {
-  font-size: 9px;
+  font-size: 11px;
   padding: 2px 5px;
   border: 1px solid #d6dee8;
   border-radius: 3px;
@@ -223,7 +223,8 @@ nav button em {
   gap: 11px;
 }
 .system-state {
-  font-size: 10px;
+  font-size: 13px;
+  font-weight: 500;
   color: #607087;
   display: flex;
   align-items: center;
@@ -239,8 +240,8 @@ nav button em {
   border: 1px solid #e1e6ec;
   background: #fff;
   color: #52657c;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 5px;
   display: grid;
   place-items: center;
@@ -249,12 +250,12 @@ nav button em {
   position: absolute;
   right: -3px;
   top: -4px;
-  min-width: 15px;
-  height: 15px;
+  min-width: 16px;
+  height: 16px;
   border-radius: 8px;
   background: #e75656;
   color: #fff;
-  font-size: 8px;
+  font-size: 10px;
   font-style: normal;
   display: grid;
   place-items: center;
@@ -270,14 +271,14 @@ nav button em {
   padding: 0;
 }
 .profile > span {
-  width: 33px;
-  height: 33px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: #e4edf9;
   color: #245795;
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 .profile strong,
@@ -286,12 +287,12 @@ nav button em {
   text-align: left;
 }
 .profile strong {
-  font-size: 11px;
+  font-size: 13px;
 }
 .profile small {
-  font-size: 9px;
+  font-size: 11px;
   color: #94a0ae;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 .content {
   padding: 22px 25px 30px;
@@ -344,7 +345,7 @@ nav button em {
   display: flex;
   justify-content: space-between;
   color: #65768b;
-  font-size: 11px;
+  font-size: 13.5px;
 }
 .kpi-card > div svg {
   opacity: 0.55;
@@ -352,19 +353,19 @@ nav button em {
 .kpi-card strong {
   display: block;
   margin-top: 9px;
-  font-size: 27px;
+  font-size: 32px;
   line-height: 1;
   color: #16355b;
 }
 .kpi-card strong small {
   margin-left: 4px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: #8a98aa;
 }
 .kpi-card p {
   margin: 9px 0 0;
-  font-size: 9px;
+  font-size: 12px;
   color: #8492a3;
 }
 .kpi-card > i {
@@ -492,7 +493,7 @@ nav button em {
   border: 0;
   background: transparent;
   color: #758397;
-  font-size: 10px;
+  font-size: 13.5px;
 }
 .tabs button.selected {
   color: #215a9e;
@@ -508,7 +509,7 @@ nav button em {
   background: #2767b4;
 }
 .tabs span {
-  font-size: 8px;
+  font-size: 11px;
   color: #99a5b3;
 }
 .device-tabs {
@@ -523,8 +524,8 @@ nav button em {
   background: #fff;
   color: #64748b;
   border-radius: 5px;
-  padding: 6px 10px;
-  font-size: 11px;
+  padding: 6px 12px;
+  font-size: 13px;
   cursor: pointer;
 }
 .device-tabs button.selected {
@@ -538,8 +539,8 @@ nav button em {
   gap: 6px;
 }
 .table-actions label {
-  width: 156px;
-  height: 29px;
+  width: 170px;
+  height: 32px;
   border: 1px solid #dfe5eb;
   border-radius: 4px;
   display: flex;
@@ -552,22 +553,22 @@ nav button em {
   width: 100%;
   border: 0;
   outline: 0;
-  font-size: 9px;
+  font-size: 12px;
 }
 .table-actions button {
-  height: 29px;
+  height: 32px;
   border: 1px solid #dfe5eb;
   border-radius: 4px;
   background: #fff;
   color: #637286;
-  font-size: 9px;
+  font-size: 12px;
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 0 9px;
+  padding: 0 10px;
 }
 .room-filter {
-  height: 29px;
+  height: 32px;
   border: 1px solid #dfe5eb;
   border-radius: 4px;
   background: #fff;
@@ -575,29 +576,29 @@ nav button em {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 0 7px;
+  padding: 0 8px;
 }
 .room-filter select {
-  width: 116px;
+  width: 125px;
   border: 0;
   outline: 0;
   background: transparent;
   color: #637286;
-  font-size: 9px;
+  font-size: 12px;
   cursor: pointer;
 }
 .advanced-filters {
-  min-height: 45px;
-  padding: 7px 14px;
+  min-height: 48px;
+  padding: 8px 14px;
   border-top: 1px solid #edf0f3;
   background: #fbfcfd;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 .date-filter,
 .select-filter {
-  height: 29px;
+  height: 32px;
   border: 1px solid #dfe5eb;
   border-radius: 4px;
   background: #fff;
@@ -605,7 +606,7 @@ nav button em {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 0 7px;
+  padding: 0 8px;
 }
 .date-filter input,
 .select-filter select {
@@ -613,43 +614,43 @@ nav button em {
   outline: 0;
   background: transparent;
   color: #52657b;
-  font-size: 8.5px;
+  font-size: 12px;
 }
 .select-filter select {
-  width: 94px;
+  width: 110px;
   cursor: pointer;
 }
 .equipment-filter select {
-  width: 105px;
+  width: 120px;
 }
 .include-completed {
-  height: 29px;
-  padding: 0 8px;
+  height: 32px;
+  padding: 0 10px;
   border: 1px solid #dfe5eb;
   border-radius: 4px;
   background: #fff;
   color: #5f7186;
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 8.5px;
+  gap: 6px;
+  font-size: 12px;
   white-space: nowrap;
   cursor: pointer;
 }
 .include-completed input {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   accent-color: #2865aa;
 }
 .reset-filter {
   margin-left: auto;
-  height: 29px;
-  padding: 0 9px;
+  height: 32px;
+  padding: 0 11px;
   border: 1px solid #dfe5eb;
   border-radius: 4px;
   background: #fff;
   color: #6b7b8e;
-  font-size: 8.5px;
+  font-size: 12px;
 }
 .table-wrap {
   overflow-x: auto;
@@ -661,21 +662,21 @@ table {
   white-space: nowrap;
 }
 th {
-  height: 35px;
-  padding: 0 11px;
+  height: 40px;
+  padding: 0 12px;
   background: #f6f8fa;
   border-bottom: 1px solid #e3e8ee;
   color: #637388;
-  font-size: 9px;
+  font-size: 12.5px;
   font-weight: 600;
   text-align: left;
 }
 td {
-  height: 48px;
-  padding: 0 11px;
+  height: 52px;
+  padding: 0 12px;
   border-bottom: 1px solid #eef1f4;
-  color: #43546a;
-  font-size: 9.5px;
+  color: #334458;
+  font-size: 13.5px;
 }
 tbody tr:hover {
   background: #f8fbff;
@@ -691,11 +692,11 @@ tbody tr {
 .routine-flag {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 3px;
-  font-size: 8px;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 4px;
+  font-size: 11.5px;
   font-weight: 600;
 }
 .urgent-flag {
@@ -711,39 +712,40 @@ tbody tr {
   background: #f0f3f6;
 }
 .exam-time {
-  font-size: 8.5px;
+  font-size: 13px;
   font-weight: 600;
-  color: #52657b;
+  color: #43556d;
 }
 .patient-meta {
   display: inline-block;
-  margin-left: 5px;
-  color: #98a4b1;
-  font-size: 7.5px;
+  margin-left: 6px;
+  color: #8896a6;
+  font-size: 12px;
 }
 .unassigned {
   color: #b77b1b;
   background: #fff5e4;
-  padding: 3px 5px;
+  padding: 3px 6px;
   border-radius: 3px;
-  font-size: 8px;
+  font-size: 12px;
 }
 .patient-id {
   border: 0;
   background: transparent;
-  color: #2461a9;
-  font-size: 9.5px;
+  color: #1d63d8;
+  font-size: 13.5px;
   padding: 0;
   font-weight: 600;
 }
 .status {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 22px;
-  padding: 0 7px;
-  border-radius: 3px;
-  font-size: 8.5px;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  font-weight: 500;
   background: #eef4fb;
   color: #336ba9;
 }
@@ -1018,30 +1020,30 @@ tbody tr {
 }
 .patient-summary h4 {
   margin: 0;
-  font-size: 13px;
+  font-size: 16px;
 }
 .patient-summary h4 small {
-  margin-left: 4px;
+  margin-left: 6px;
   color: #7d8b9b;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 500;
 }
 .patient-summary p {
   margin: 5px 0 0;
   color: #7f8ea0;
-  font-size: 9px;
+  font-size: 13px;
 }
 .drawer-urgent {
   margin-left: auto;
-  height: 23px;
-  padding: 0 7px;
-  border-radius: 3px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
   background: #fff0f0;
   color: #c94343;
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 8.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 .drawer-section {
@@ -1050,8 +1052,9 @@ tbody tr {
 }
 .drawer-section h5 {
   margin: 0 0 12px;
-  font-size: 10px;
-  color: #53657a;
+  font-size: 14px;
+  font-weight: 700;
+  color: #33485e;
 }
 .drawer-section dl {
   margin: 0;
@@ -1063,13 +1066,13 @@ tbody tr {
   min-width: 0;
 }
 .drawer-section dt {
-  font-size: 8px;
-  color: #93a0af;
+  font-size: 12px;
+  color: #7f8ea0;
 }
 .drawer-section dd {
   margin: 4px 0 0;
-  font-size: 9.5px;
-  color: #34485e;
+  font-size: 13.5px;
+  color: #243547;
   font-weight: 600;
   white-space: normal;
 }
@@ -1078,46 +1081,46 @@ tbody tr {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
-  font-size: 9px;
-  color: #708095;
+  font-size: 13px;
+  color: #55667a;
 }
 .tech-assignment {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 9px;
-  color: #708095;
+  font-size: 13px;
+  color: #55667a;
 }
 .tech-assignment select {
   width: 225px;
-  height: 31px;
+  height: 34px;
   border: 1px solid #d9e1e9;
   border-radius: 4px;
   background: #fff;
-  padding: 0 7px;
-  color: #40556d;
-  font-size: 9px;
+  padding: 0 8px;
+  color: #33485e;
+  font-size: 13px;
   outline: none;
 }
 .assignment-rule {
   margin: 9px 0 0;
-  padding: 7px 8px;
+  padding: 8px 10px;
   border-radius: 4px;
   background: #eef5fb;
-  color: #3d6f9f;
-  font-size: 8px;
+  color: #2b6192;
+  font-size: 12px;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 .memo-section p {
   margin: 0;
   padding: 10px;
   border-radius: 4px;
   background: #f7f9fb;
-  color: #657588;
-  font-size: 9px;
+  color: #495a6e;
+  font-size: 13px;
   line-height: 1.5;
 }
 .drawer-actions {
@@ -1126,21 +1129,21 @@ tbody tr {
   border-top: 1px solid #dfe6ee;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 7px;
+  gap: 8px;
   background: #fff;
 }
 .drawer-actions button {
-  height: 34px;
+  height: 38px;
   border-radius: 4px;
   border: 1px solid #d7e0e9;
   background: #fff;
-  color: #4f6278;
-  font-size: 9px;
+  color: #34485e;
+  font-size: 13px;
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
 }
 .drawer-actions .action-start {
   background: #2766ad;
@@ -1598,10 +1601,11 @@ tbody tr {
   grid-template-columns: 1fr 130px 16px;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 5px;
-  font-size: 12px;
+  font-size: 13.5px;
+  font-weight: 500;
 }
 .prep-check-list label.warning {
   border-color: #efb2a8;
@@ -1610,10 +1614,126 @@ tbody tr {
 }
 .prep-check-list select {
   width: 100%;
+  font-size: 13px;
+  padding: 4px 6px;
 }
 .exam-drawer .drawer-actions {
   position: sticky;
   bottom: 0;
   background: #fff;
   padding-top: 12px;
+}
+
+/* Minimal Login Screen Styling */
+.login-screen-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0a203b 0%, #102b4e 100%);
+  padding: 20px;
+}
+.login-box {
+  width: 100%;
+  max-width: 400px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+.login-header {
+  background: #0a203b;
+  color: #ffffff;
+  padding: 28px 24px;
+  text-align: center;
+  border-bottom: 2px solid #1d63d8;
+}
+.login-brand-icon {
+  width: 44px;
+  height: 44px;
+  background: #ffffff;
+  color: #1857a7;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: 300;
+  margin-bottom: 12px;
+}
+.login-header h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.login-header p {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #9db0c7;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.login-form {
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.login-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #17283d;
+}
+.login-field input {
+  padding: 10px 14px;
+  border: 1px solid #dfe6ee;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.15s ease;
+  outline: none;
+}
+.login-field input:focus {
+  border-color: #1d63d8;
+  box-shadow: 0 0 0 3px rgba(29, 99, 216, 0.15);
+}
+.login-error {
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  color: #c53030;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.login-submit-btn {
+  background: #1d63d8;
+  color: #ffffff;
+  border: none;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  margin-top: 4px;
+}
+.login-submit-btn:hover:not(:disabled) {
+  background: #154fb3;
+}
+.login-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.login-footer-info {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #718096;
+  text-align: center;
+  line-height: 1.4;
 }

@@ -25,8 +25,13 @@ import {
   Volume2,
   X,
   Zap,
+  LogOut,
+  LogIn,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getExams, getPatients, loginWithEmail, logoutUser, subscribeToAuthState } from '@/lib/firebase/services';
+import { isFirebaseConfigured, db } from '@/lib/firebase/config';
+import type { User } from 'firebase/auth';
 
 const navItems = [
   ['Dashboard', LayoutDashboard],
@@ -348,6 +353,100 @@ export default function Home() {
   const [reservationTime, setReservationTime] = useState('09:00');
   const [reservationModality, setReservationModality] =
     useState('전체 Modality');
+  const [firestoreStatus, setFirestoreStatus] = useState<'checking' | 'connected' | 'fallback'>('checking');
+  
+  // Authentication states
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginSubmitting, setLoginSubmitting] = useState(false);
+
+  // 1. Subscribe to Firebase Auth state
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthState((user) => {
+      setCurrentUser(user);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Query Firestore ONLY when user is authenticated
+  useEffect(() => {
+    if (!currentUser) {
+      setFirestoreStatus('checking');
+      return;
+    }
+
+    let isMounted = true;
+    async function loadData() {
+      if (!isFirebaseConfigured || !db) {
+        if (isMounted) setFirestoreStatus('fallback');
+        return;
+      }
+      try {
+        const [firestoreExams, _firestorePatients] = await Promise.all([
+          getExams(),
+          getPatients(),
+        ]);
+        if (!isMounted) return;
+        if (firestoreExams && firestoreExams.length > 0) {
+          const mapped: Exam[] = firestoreExams.map((fe, idx) => ({
+            id: fe.patientId || `P-${idx + 1}`,
+            date: fe.orderDate ? fe.orderDate.split('T')[0] : '2026-08-29',
+            time: fe.orderDate && fe.orderDate.includes('T') ? fe.orderDate.split('T')[1].slice(0, 5) : '09:00',
+            name: fe.patientName || '환자',
+            sex: '남',
+            age: 50,
+            exam: fe.examName || '일반 검사',
+            modality: fe.modality || 'X-ray',
+            equipment: fe.equipmentId || 'X-ray 1',
+            department: fe.department || '내과',
+            tech: fe.radiographerName || '',
+            status: fe.status || '대기',
+            urgent: fe.urgency === '응급',
+            accession: fe.examId || `ACC-${fe.id || idx}`,
+            doctor: fe.orderDoctor || '',
+            memo: fe.notes || '',
+          }));
+          setExams(mapped);
+          setFirestoreStatus('connected');
+        } else {
+          // Firestore is empty or returned no records -> keep initialWorklist fallback
+          setFirestoreStatus('fallback');
+        }
+      } catch (err) {
+        if (isMounted) setFirestoreStatus('fallback');
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
+
+  // Login handler
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginEmail.trim() || !loginPassword) {
+      setLoginError('이메일과 비밀번호를 모두 입력해 주세요.');
+      return;
+    }
+    setLoginError('');
+    setLoginSubmitting(true);
+    const res = await loginWithEmail(loginEmail, loginPassword);
+    setLoginSubmitting(false);
+    if (res.error) {
+      setLoginError(res.error);
+    }
+  };
+
+  // Logout handler
+  const handleLogout = async () => {
+    await logoutUser();
+    setNotice('로그아웃 되었습니다.');
+  };
   const [reservationSelectedId, setReservationSelectedId] = useState<
     string | null
   >(null);
@@ -648,6 +747,76 @@ export default function Home() {
             ]
           : item,
   );
+
+  // 1. Loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="login-screen-wrapper">
+        <div style={{ color: '#ffffff', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="brand-mark" style={{ width: '28px', height: '28px', fontSize: '20px' }}>+</div>
+          인증 상태를 확인하고 있습니다...
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Render Minimal Login Screen if not authenticated
+  if (!currentUser) {
+    return (
+      <div className="login-screen-wrapper">
+        <div className="login-box">
+          <div className="login-header">
+            <div className="login-brand-icon">+</div>
+            <h1>예수사랑병원 RIS</h1>
+            <p>Radiology Information System</p>
+          </div>
+          <form className="login-form" onSubmit={handleLoginSubmit}>
+            <div className="login-field">
+              <label htmlFor="login-email">이메일 계정</label>
+              <input
+                id="login-email"
+                type="email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                placeholder="doctor@jesus-hospital.kr"
+                required
+                autoComplete="email"
+              />
+            </div>
+            <div className="login-field">
+              <label htmlFor="login-password">비밀번호</label>
+              <input
+                id="login-password"
+                type="password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                autoComplete="current-password"
+              />
+            </div>
+            {loginError && (
+              <div className="login-error" role="alert">
+                {loginError}
+              </div>
+            )}
+            <button
+              type="submit"
+              className="login-submit-btn"
+              disabled={loginSubmitting}
+            >
+              {loginSubmitting ? '로그인 처리중...' : '로그인'}
+            </button>
+            <div className="login-footer-info">
+              * 병원 영상의학과 등록 계정으로만 접근 가능합니다.
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Render Original RIS UI when authenticated
   return (
     <main className="app-shell">
       <aside className={`sidebar ${side ? 'open' : ''}`}>
@@ -707,21 +876,28 @@ export default function Home() {
             <kbd>F2</kbd>
           </div>
           <div className="top-actions">
-            <div className="system-state">
-              <i />
-              시스템 정상
+            <div className="system-state" title={firestoreStatus === 'connected' ? 'Cloud Firestore 실시간 연동됨' : '로컬 모드 (Mock Fallback 동작)'}>
+              <i style={firestoreStatus === 'fallback' ? { background: '#f59e0b', boxShadow: '0 0 8px rgba(245, 158, 11, 0.4)' } : undefined} />
+              {firestoreStatus === 'connected' ? 'Cloud 연동' : firestoreStatus === 'checking' ? '연결 확인중' : '시스템 정상'}
             </div>
             <button className="icon-button">
               <Bell size={18} />
               <i>3</i>
             </button>
             <button className="profile">
-              <span>김</span>
+              <span>{currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : '김'}</span>
               <div>
-                <strong>김유진</strong>
-                <small>방사선사</small>
+                <strong>{currentUser?.email ? currentUser.email.split('@')[0] : '김유진'}</strong>
+                <small>{currentUser?.email ? currentUser.email : '방사선사'}</small>
               </div>
-              <ChevronDown size={14} />
+            </button>
+            <button
+              className="icon-button"
+              onClick={handleLogout}
+              title="로그아웃"
+              style={{ marginLeft: '4px', color: '#e53e3e' }}
+            >
+              <LogOut size={16} />
             </button>
           </div>
         </header>
