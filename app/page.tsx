@@ -496,11 +496,28 @@ export default function Home() {
           '휠체어 / 이동 보조 필요 여부',
           '폐쇄공포증 여부',
         ];
-  const prepComplete = prepItems.every((item) =>
-    ['확인 완료', '해당 없음'].includes(
-      prepChecks[`${selected?.id}-${item}`] ?? '',
-    ),
-  );
+
+  // CT/MRI strict safety clearance evaluation
+  const isSafetyModality = selected?.modality === 'CT' || selected?.modality === 'MRI';
+  const hasUncheckedItem = isSafetyModality && prepItems.some((item) => {
+    const val = prepChecks[`${selected?.id}-${item}`] ?? '추가 확인 필요';
+    return val === '추가 확인 필요' || val === '미확인';
+  });
+  const prepComplete = isSafetyModality
+    ? prepItems.every((item) => {
+        const val = prepChecks[`${selected?.id}-${item}`];
+        return val === '확인 완료' || val === '해당 없음' || val === '해당없음';
+      })
+    : true;
+
+  const clearanceStatus = !isSafetyModality
+    ? '검사 가능'
+    : prepComplete
+      ? '검사 가능'
+      : '확인 필요';
+
+  const canStartExam = selected?.status === '대기' && (!isSafetyModality || (prepComplete && clearanceStatus === '검사 가능'));
+  const canCompleteExam = selected?.status === '검사중';
   const assignedTechForEquipment = (equipmentName: string) =>
     assignments[`${assignDate}|${assignShift}|${equipmentName}`] ??
     assignments[
@@ -581,6 +598,66 @@ export default function Home() {
     );
   });
   const updateExam = (id: string, patch: Partial<Exam>) => {
+    const targetExam = exams.find((exam) => exam.id === id);
+    if (!targetExam) return;
+
+    // 1. Double Verification for Starting Exam (대기 -> 검사중)
+    if (patch.status === '검사중') {
+      if (targetExam.status !== '대기') {
+        setNotice(`잘못된 상태 전환입니다. '대기' 상태에서만 시작할 수 있습니다. (현재: ${targetExam.status})`);
+        setTimeout(() => setNotice(''), 3000);
+        return;
+      }
+
+      // CT/MRI Safety Checklist Strict Enforcement
+      if (targetExam.modality === 'CT' || targetExam.modality === 'MRI') {
+        const requiredItems =
+          targetExam.modality === 'CT'
+            ? [
+                '조영제 사용 여부',
+                '조영제 알레르기 여부',
+                '신장기능 확인',
+                '금식 여부',
+                '정맥주사(IV) 확보 여부',
+                '임신 가능성',
+                '휠체어 / 보행보조 여부',
+              ]
+            : [
+                '조영제 사용 여부',
+                '조영제 알레르기 및 신장기능 확인',
+                '임신 가능성',
+                '심박동기 등 체내 전자기기',
+                '인공관절 / 금속 임플란트',
+                '수술용 클립 / 코일 / 스텐트',
+                '체내 금속성 고정물',
+                '금속성 이물질 여부',
+                '보청기 등 제거 필요 물품',
+                '휠체어 / 이동 보조 필요 여부',
+                '폐쇄공포증 여부',
+              ];
+
+        const unverifiedItems = requiredItems.filter((item) => {
+          const val = prepChecks[`${targetExam.id}-${item}`] ?? '추가 확인 필요';
+          return val !== '확인 완료' && val !== '해당 없음' && val !== '해당없음';
+        });
+
+        if (unverifiedItems.length > 0) {
+          setNotice(`[안전 점검 미통과] ${targetExam.modality} 필수 체크리스트 항목(${unverifiedItems.length}건) 확인이 필요합니다.`);
+          setTimeout(() => setNotice(''), 3500);
+          return;
+        }
+      }
+    }
+
+    // 2. Double Verification for Completing Exam (검사중 -> 완료)
+    if (patch.status === '완료') {
+      if (targetExam.status !== '검사중') {
+        setNotice(`잘못된 상태 전환입니다. '검사중' 상태의 검사만 완료할 수 있습니다. (현재: ${targetExam.status})`);
+        setTimeout(() => setNotice(''), 3000);
+        return;
+      }
+    }
+
     setExams((current) =>
       current.map((exam) => (exam.id === id ? { ...exam, ...patch } : exam)),
     );
@@ -1798,37 +1875,34 @@ export default function Home() {
                   {prepComplete ? '검사 가능' : '확인 필요'}
                 </strong>
                 <div className="prep-check-list">
-                  {prepItems.map((item) => (
-                    <label
-                      key={item}
-                      className={
-                        prepChecks[`${selected.id}-${item}`] === '미확인'
-                          ? 'warning'
-                          : ''
-                      }
-                    >
-                      <span>{item}</span>
-                      <select
-                        value={
-                          prepChecks[`${selected.id}-${item}`] ??
-                          '추가 확인 필요'
-                        }
-                        onChange={(e) =>
-                          setPrepChecks({
-                            ...prepChecks,
-                            [`${selected.id}-${item}`]: e.target.value,
-                          })
-                        }
+                  {prepItems.map((item) => {
+                    const currentVal = prepChecks[`${selected.id}-${item}`] ?? '추가 확인 필요';
+                    const isCleared = currentVal === '확인 완료' || currentVal === '해당 없음' || currentVal === '해당없음';
+                    return (
+                      <label
+                        key={item}
+                        className={!isCleared ? 'warning' : ''}
                       >
-                        <option>확인 완료</option>
-                        <option>추가 확인 필요</option>
-                        <option>해당없음</option>
-                      </select>
-                      {prepChecks[`${selected.id}-${item}`] !== '확인' && (
-                        <AlertTriangle size={13} />
-                      )}
-                    </label>
-                  ))}
+                        <span>{item}</span>
+                        <select
+                          value={currentVal}
+                          onChange={(e) =>
+                            setPrepChecks({
+                              ...prepChecks,
+                              [`${selected.id}-${item}`]: e.target.value,
+                            })
+                          }
+                        >
+                          <option>확인 완료</option>
+                          <option>추가 확인 필요</option>
+                          <option>해당 없음</option>
+                        </select>
+                        {!isCleared && (
+                          <AlertTriangle size={13} />
+                        )}
+                      </label>
+                    );
+                  })}
                 </div>
               </section>
             )}
@@ -1957,11 +2031,14 @@ export default function Home() {
             <div className="drawer-actions">
               <button
                 className="action-start"
-                disabled={
-                  (selected.modality === 'CT' || selected.modality === 'MRI') &&
-                  !prepComplete
+                disabled={!canStartExam}
+                title={
+                  selected.status !== '대기'
+                    ? `'대기' 상태인 검사만 시작할 수 있습니다. (현재: ${selected.status})`
+                    : isSafetyModality && !prepComplete
+                      ? `${selected.modality} 필수 안전 체크리스트 확인이 완료되지 않았습니다.`
+                      : '검사를 시작합니다.'
                 }
-                disabled={selected.status !== '대기'}
                 onClick={() => updateExam(selected.id, { status: '검사중' })}
               >
                 <Play size={14} />
@@ -1969,7 +2046,12 @@ export default function Home() {
               </button>
               <button
                 className="action-complete"
-                disabled={selected.status !== '검사중'}
+                disabled={!canCompleteExam}
+                title={
+                  selected.status !== '검사중'
+                    ? `'검사중' 상태인 검사만 완료할 수 있습니다. (현재: ${selected.status})`
+                    : '검사를 완료하고 판독대기 상태로 전환합니다.'
+                }
                 onClick={() => updateExam(selected.id, { status: '완료' })}
               >
                 <CheckCircle2 size={14} />
