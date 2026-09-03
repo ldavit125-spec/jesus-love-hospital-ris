@@ -126,15 +126,22 @@ function isItemCleared(status?: ChecklistItemStatus): boolean {
  */
 export async function validateExamChecklist(
   examId: string,
-  modality: string
+  modality: string,
+  equipmentId?: string
 ): Promise<{
   isValid: boolean;
   clearanceStatus: ChecklistOverallStatus;
   reason?: string;
   checklist?: ExamChecklist;
 }> {
-  // 1. Non-CT/MRI modalities (X-ray, US, MG, etc.) pass automatically
-  if (!['CT', 'MRI'].includes(modality)) {
+  // Check whether this is an operating room C-arm exam
+  const isOrCarm =
+    modality === 'C-arm' &&
+    (equipmentId?.includes('수술실') || equipmentId === 'C-arm · 수술실');
+  const isUS = modality === 'US' || modality === 'Ultrasound';
+
+  // 1. Non-CT/MRI/OR-C-arm/US modalities (X-ray, MG, Fluoroscopy C-arm, etc.) pass automatically
+  if (!['CT', 'MRI'].includes(modality) && !isOrCarm && !isUS) {
     return { isValid: true, clearanceStatus: '검사 가능' };
   }
 
@@ -160,8 +167,11 @@ export async function validateExamChecklist(
     const q = query(colRef, where('examId', '==', examId));
     const snap = await getDocs(q);
 
-    // Fail-closed: Missing checklist document -> BLOCK
+    // Fail-closed for CT/MRI/OR-C-arm. For US: if no checklist doc exists, pass automatically (no protocol requirements specified)
     if (snap.empty) {
+      if (isUS) {
+        return { isValid: true, clearanceStatus: '검사 가능' };
+      }
       return {
         isValid: false,
         clearanceStatus: '검사 보류',
@@ -358,6 +368,91 @@ export async function validateExamChecklist(
       }
     }
 
+    // -------------------------------------------------------------
+    // Operating Room C-arm (수술실 C-arm) Preoperative Fasting Safety Validation
+    // - Applied ONLY to OR C-arm (투시실 C-arm 제외)
+    // - Preoperative fasting must be '확인 완료' OR '해당 없음/의료진 확인'
+    // - '추가 확인 필요' or '미확인' MUST block exam start
+    // - '해당 없음/의료진 확인' requires medical staff clinical verification info
+    // -------------------------------------------------------------
+    if (isOrCarm) {
+      const orSafety = checklist.orCarmSafety;
+      const fastingStatus = orSafety?.fastingStatus;
+
+      // 1. Strict block on '추가 확인 필요' or '미확인' or missing
+      if (!fastingStatus || fastingStatus === '미확인' || fastingStatus === '추가 확인 필요') {
+        return {
+          isValid: false,
+          clearanceStatus: '확인 필요',
+          reason: '수술실 C-arm 검사 전 금식 상태 확인이 완료되지 않았습니다. (추가 확인 필요)',
+          checklist,
+        };
+      }
+
+      // 2. If '해당 없음/의료진 확인', verify that medical staff clinical verification is recorded
+      if (fastingStatus === '해당 없음/의료진 확인') {
+        const staffVerif = orSafety?.medicalStaffVerification;
+        if (!staffVerif || !staffVerif.verifiedDoctor || !staffVerif.clinicalReason) {
+          return {
+            isValid: false,
+            clearanceStatus: '확인 필요',
+            reason: '수술팀/마취과 의료진의 임상 확인 정보(확인 의료진, 사유)가 기록되어야 검사 시작이 가능합니다.',
+            checklist,
+          };
+        }
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Ultrasound (초음파) Protocol-Specific Preparation Validation
+    // - Not all US exams require fasting.
+    // - Only validate preparations explicitly marked required by the protocol.
+    // - If no preparation is required, pass automatically.
+    // -------------------------------------------------------------
+    if (isUS) {
+      const usProto = checklist.usProtocol || {};
+      const usPrep = checklist.usPreparation || {};
+
+      // 1. 금식(Fasting) 필수 프로토콜인 경우 검증
+      if (usProto.requiresFasting === true) {
+        const fastingConfirmed = usPrep.fastingConfirmed;
+        if (!isItemCleared(fastingConfirmed)) {
+          return {
+            isValid: false,
+            clearanceStatus: '확인 필요',
+            reason: '해당 초음파 검사는 사전 금식(6~8시간) 확인이 필수입니다. (미확인/추가 확인 필요)',
+            checklist,
+          };
+        }
+      }
+
+      // 2. 방광 충만(Full Bladder) 필수 프로토콜인 경우 검증
+      if (usProto.requiresFullBladder === true) {
+        const bladderConfirmed = usPrep.fullBladderConfirmed;
+        if (!isItemCleared(bladderConfirmed)) {
+          return {
+            isValid: false,
+            clearanceStatus: '확인 필요',
+            reason: '해당 초음파 검사는 방광 충만(소변 참기) 상태 확인이 필수입니다. (미확인/추가 확인 필요)',
+            checklist,
+          };
+        }
+      }
+
+      // 3. 기타 사전 준비 필수 프로토콜인 경우 검증
+      if (usProto.requiresOtherPreparation === true) {
+        const otherConfirmed = usPrep.otherPreparationConfirmed;
+        if (!isItemCleared(otherConfirmed)) {
+          return {
+            isValid: false,
+            clearanceStatus: '확인 필요',
+            reason: `${usProto.otherPreparationDescription || '초음파 사전 준비사항'} 확인이 완료되지 않았습니다.`,
+            checklist,
+          };
+        }
+      }
+    }
+
     return {
       isValid: true,
       clearanceStatus: '검사 가능',
@@ -406,9 +501,14 @@ export async function startExam(
       };
     }
 
-    // CT/MRI: NO BYPASS - Always strictly validated
-    if (['CT', 'MRI'].includes(currentData.modality)) {
-      const checkResult = await validateExamChecklist(examId, currentData.modality);
+    // CT/MRI/수술실 C-arm/US: NO BYPASS - Always strictly validated according to protocol
+    const isOrCarm =
+      currentData.modality === 'C-arm' &&
+      (currentData.equipmentId?.includes('수술실') || currentData.equipmentId === 'C-arm · 수술실');
+    const isUS = currentData.modality === 'US' || currentData.modality === 'Ultrasound';
+
+    if (['CT', 'MRI'].includes(currentData.modality) || isOrCarm || isUS) {
+      const checkResult = await validateExamChecklist(examId, currentData.modality, currentData.equipmentId);
       if (!checkResult.isValid) {
         return {
           success: false,

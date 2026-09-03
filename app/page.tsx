@@ -408,6 +408,17 @@ export default function Home() {
   const [reportTexts, setReportTexts] = useState<Record<string, string>>({});
   const [reportRole] = useState<'전문의' | '방사선사'>('전문의');
   const [prepChecks, setPrepChecks] = useState<Record<string, string>>({});
+  const [orFastingVerifications, setOrFastingVerifications] = useState<
+    Record<
+      string,
+      {
+        verifiedDoctor: string;
+        departmentOrRole: string;
+        clinicalReason: string;
+        isEmergencySurgery: boolean;
+      }
+    >
+  >({});
   const [assignDate, setAssignDate] = useState('2026-08-29');
   const [assignShift, setAssignShift] = useState('주간');
   const [assignTechName, setAssignTechName] = useState('');
@@ -472,6 +483,42 @@ export default function Home() {
     });
     setNotice('방사선사 배정이 저장되었습니다.');
   };
+  // Distinguish Modalities requiring safety checklist
+  const isOrCarm =
+    selected?.modality === 'C-arm' &&
+    (selected?.equipment?.includes('수술실') || selected?.equipment === 'C-arm · 수술실');
+  const isUS = selected?.modality === 'US' || selected?.modality === 'Ultrasound';
+
+  // US protocol requirements definition based on exam name
+  const usProtocol = isUS
+    ? {
+        requiresFasting:
+          selected?.exam?.includes('Abdomen') ||
+          selected?.exam?.includes('복부') ||
+          selected?.exam?.includes('Liver') ||
+          selected?.exam?.includes('간'),
+        requiresFullBladder:
+          selected?.exam?.includes('Pelvis') ||
+          selected?.exam?.includes('골반') ||
+          selected?.exam?.includes('Bladder') ||
+          selected?.exam?.includes('방광') ||
+          selected?.exam?.includes('비뇨'),
+        requiresOtherPreparation: false,
+      }
+    : null;
+
+  const usRequiredItems: string[] = [];
+  if (isUS && usProtocol) {
+    if (usProtocol.requiresFasting) usRequiredItems.push('금식 상태 확인 (6~8시간)');
+    if (usProtocol.requiresFullBladder) usRequiredItems.push('방광 충만 확인 (소변 참기)');
+  }
+
+  const isSafetyModality =
+    selected?.modality === 'CT' ||
+    selected?.modality === 'MRI' ||
+    isOrCarm ||
+    (isUS && usRequiredItems.length > 0);
+
   const prepItems =
     selected?.modality === 'CT'
       ? [
@@ -483,32 +530,57 @@ export default function Home() {
           '임신 가능성',
           '휠체어 / 보행보조 여부',
         ]
-      : [
-          '조영제 사용 여부',
-          '조영제 알레르기 및 신장기능 확인',
-          '임신 가능성',
-          '심박동기 등 체내 전자기기',
-          '인공관절 / 금속 임플란트',
-          '수술용 클립 / 코일 / 스텐트',
-          '체내 금속성 고정물',
-          '금속성 이물질 여부',
-          '보청기 등 제거 필요 물품',
-          '휠체어 / 이동 보조 필요 여부',
-          '폐쇄공포증 여부',
-        ];
+      : selected?.modality === 'MRI'
+        ? [
+            '조영제 사용 여부',
+            '조영제 알레르기 및 신장기능 확인',
+            '임신 가능성',
+            '심박동기 등 체내 전자기기',
+            '인공관절 / 금속 임플란트',
+            '수술용 클립 / 코일 / 스텐트',
+            '체내 금속성 고정물',
+            '금속성 이물질 여부',
+            '보청기 등 제거 필요 물품',
+            '휠체어 / 이동 보조 필요 여부',
+            '폐쇄공포증 여부',
+          ]
+        : isOrCarm
+          ? ['수술 전 금식 상태 확인']
+          : isUS
+            ? usRequiredItems
+            : [];
 
-  // CT/MRI strict safety clearance evaluation
-  const isSafetyModality = selected?.modality === 'CT' || selected?.modality === 'MRI';
-  const hasUncheckedItem = isSafetyModality && prepItems.some((item) => {
-    const val = prepChecks[`${selected?.id}-${item}`] ?? '추가 확인 필요';
-    return val === '추가 확인 필요' || val === '미확인';
-  });
-  const prepComplete = isSafetyModality
-    ? prepItems.every((item) => {
-        const val = prepChecks[`${selected?.id}-${item}`];
-        return val === '확인 완료' || val === '해당 없음' || val === '해당없음';
-      })
-    : true;
+  // OR C-arm Fasting Clearance evaluation
+  const orCarmFastingStatus = isOrCarm
+    ? (prepChecks[`${selected?.id}-수술 전 금식 상태 확인`] ?? '추가 확인 필요')
+    : '해당 없음';
+  const orCarmVerificationData = selected?.id ? orFastingVerifications[selected.id] : undefined;
+  const isOrCarmCleared =
+    !isOrCarm ||
+    orCarmFastingStatus === '확인 완료' ||
+    (orCarmFastingStatus === '해당 없음/의료진 확인' &&
+      Boolean(orCarmVerificationData?.verifiedDoctor?.trim() && orCarmVerificationData?.clinicalReason?.trim()));
+
+  // US protocol preparation clearance evaluation
+  const isUsCleared =
+    !isUS ||
+    usRequiredItems.length === 0 ||
+    usRequiredItems.every((item) => {
+      const val = prepChecks[`${selected?.id}-${item}`];
+      return val === '확인 완료' || val === '해당 없음' || val === '해당없음';
+    });
+
+  // Strict safety clearance evaluation
+  const prepComplete = !isSafetyModality
+    ? true
+    : isOrCarm
+      ? isOrCarmCleared
+      : isUS
+        ? isUsCleared
+        : prepItems.every((item) => {
+            const val = prepChecks[`${selected?.id}-${item}`];
+            return val === '확인 완료' || val === '해당 없음' || val === '해당없음';
+          });
 
   const clearanceStatus = !isSafetyModality
     ? '검사 가능'
@@ -516,7 +588,9 @@ export default function Home() {
       ? '검사 가능'
       : '확인 필요';
 
-  const canStartExam = selected?.status === '대기' && (!isSafetyModality || (prepComplete && clearanceStatus === '검사 가능'));
+  const canStartExam =
+    selected?.status === '대기' &&
+    (!isSafetyModality || (prepComplete && clearanceStatus === '검사 가능'));
   const canCompleteExam = selected?.status === '검사중';
   const assignedTechForEquipment = (equipmentName: string) =>
     assignments[`${assignDate}|${assignShift}|${equipmentName}`] ??
@@ -643,6 +717,64 @@ export default function Home() {
 
         if (unverifiedItems.length > 0) {
           setNotice(`[안전 점검 미통과] ${targetExam.modality} 필수 체크리스트 항목(${unverifiedItems.length}건) 확인이 필요합니다.`);
+          setTimeout(() => setNotice(''), 3500);
+          return;
+        }
+      }
+
+      // OR C-arm Preoperative Fasting Safety Strict Enforcement
+      const isTargetOrCarm =
+        targetExam.modality === 'C-arm' &&
+        (targetExam.equipment?.includes('수술실') || targetExam.equipment === 'C-arm · 수술실');
+
+      if (isTargetOrCarm) {
+        const fastingVal = prepChecks[`${targetExam.id}-수술 전 금식 상태 확인`] ?? '추가 확인 필요';
+        const verifData = orFastingVerifications[targetExam.id];
+
+        if (fastingVal === '추가 확인 필요' || fastingVal === '미확인') {
+          setNotice(`[수술실 안전 점검 미통과] 수술 전 금식 상태 확인이 완료되지 않았습니다. (${fastingVal})`);
+          setTimeout(() => setNotice(''), 3500);
+          return;
+        }
+
+        if (fastingVal === '해당 없음/의료진 확인') {
+          if (!verifData?.verifiedDoctor?.trim() || !verifData?.clinicalReason?.trim()) {
+            setNotice(`[수술실 안전 점검 미통과] 수술팀/마취과 의료진의 확인 정보(확인의, 임상 사유)를 입력해 주세요.`);
+            setTimeout(() => setNotice(''), 4000);
+            return;
+          }
+        }
+      }
+
+      // Ultrasound (초음파) Protocol-Specific Preparation Strict Enforcement
+      const isTargetUS = targetExam.modality === 'US' || targetExam.modality === 'Ultrasound';
+      if (isTargetUS) {
+        const reqItems: string[] = [];
+        if (
+          targetExam.exam.includes('Abdomen') ||
+          targetExam.exam.includes('복부') ||
+          targetExam.exam.includes('Liver') ||
+          targetExam.exam.includes('간')
+        ) {
+          reqItems.push('금식 상태 확인 (6~8시간)');
+        }
+        if (
+          targetExam.exam.includes('Pelvis') ||
+          targetExam.exam.includes('골반') ||
+          targetExam.exam.includes('Bladder') ||
+          targetExam.exam.includes('방광') ||
+          targetExam.exam.includes('비뇨')
+        ) {
+          reqItems.push('방광 충만 확인 (소변 참기)');
+        }
+
+        const unverifiedUsItems = reqItems.filter((item) => {
+          const val = prepChecks[`${targetExam.id}-${item}`] ?? '추가 확인 필요';
+          return val !== '확인 완료' && val !== '해당 없음' && val !== '해당없음';
+        });
+
+        if (unverifiedUsItems.length > 0) {
+          setNotice(`[초음파 준비사항 미확인] ${unverifiedUsItems.join(', ')} 확인이 필요합니다.`);
           setTimeout(() => setNotice(''), 3500);
           return;
         }
@@ -1866,9 +1998,9 @@ export default function Home() {
                 </div>
               </dl>
             </section>
-            {(selected.modality === 'CT' || selected.modality === 'MRI') && (
+            {(selected.modality === 'CT' || selected.modality === 'MRI' || isOrCarm || (isUS && prepItems.length > 0)) && (
               <section className="drawer-section">
-                <h5>검사 전 확인사항</h5>
+                <h5>{isOrCarm ? '수술 전 안전 확인사항' : isUS ? '초음파 사전 준비사항' : '검사 전 확인사항'}</h5>
                 <strong
                   className={prepComplete ? 'status-ok' : 'status-warning'}
                 >
@@ -1877,30 +2009,125 @@ export default function Home() {
                 <div className="prep-check-list">
                   {prepItems.map((item) => {
                     const currentVal = prepChecks[`${selected.id}-${item}`] ?? '추가 확인 필요';
-                    const isCleared = currentVal === '확인 완료' || currentVal === '해당 없음' || currentVal === '해당없음';
+                    const isCleared = isOrCarm
+                      ? isOrCarmCleared
+                      : currentVal === '확인 완료' || currentVal === '해당 없음' || currentVal === '해당없음';
+
                     return (
-                      <label
-                        key={item}
-                        className={!isCleared ? 'warning' : ''}
-                      >
-                        <span>{item}</span>
-                        <select
-                          value={currentVal}
-                          onChange={(e) =>
-                            setPrepChecks({
-                              ...prepChecks,
-                              [`${selected.id}-${item}`]: e.target.value,
-                            })
-                          }
-                        >
-                          <option>확인 완료</option>
-                          <option>추가 확인 필요</option>
-                          <option>해당 없음</option>
-                        </select>
-                        {!isCleared && (
-                          <AlertTriangle size={13} />
+                      <div key={item} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label className={!isCleared ? 'warning' : ''}>
+                          <span>{item}</span>
+                          <select
+                            value={currentVal}
+                            onChange={(e) =>
+                              setPrepChecks({
+                                ...prepChecks,
+                                [`${selected.id}-${item}`]: e.target.value,
+                              })
+                            }
+                          >
+                            <option>확인 완료</option>
+                            {isOrCarm ? (
+                              <option>해당 없음/의료진 확인</option>
+                            ) : (
+                              <option>해당 없음</option>
+                            )}
+                            <option>추가 확인 필요</option>
+                            <option>미확인</option>
+                          </select>
+                          {!isCleared && <AlertTriangle size={13} />}
+                        </label>
+
+                        {/* 수술실 C-arm 의료진 임상 확인 정보 입력 박스 */}
+                        {isOrCarm && currentVal === '해당 없음/의료진 확인' && (
+                          <div
+                            style={{
+                              background: '#f8fafc',
+                              border: '1px solid #d9e2ec',
+                              borderRadius: '6px',
+                              padding: '12px 14px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px',
+                              fontSize: '12px',
+                            }}
+                          >
+                            <div style={{ fontWeight: 600, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>📋 수술팀/마취과 임상 확인 기록</span>
+                              {selected.urgent && (
+                                <span style={{ background: '#fee2e2', color: '#b91c1c', padding: '2px 6px', borderRadius: '3px', fontSize: '11px' }}>
+                                  응급수술
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', color: '#475569' }}>
+                                확인 의료진 (의사 성명)*
+                                <input
+                                  type="text"
+                                  placeholder="예: 김마취 과장"
+                                  value={orFastingVerifications[selected.id]?.verifiedDoctor ?? ''}
+                                  onChange={(e) =>
+                                    setOrFastingVerifications({
+                                      ...orFastingVerifications,
+                                      [selected.id]: {
+                                        verifiedDoctor: e.target.value,
+                                        departmentOrRole: orFastingVerifications[selected.id]?.departmentOrRole ?? '마취통증의학과',
+                                        clinicalReason: orFastingVerifications[selected.id]?.clinicalReason ?? '',
+                                        isEmergencySurgery: selected.urgent || orFastingVerifications[selected.id]?.isEmergencySurgery || false,
+                                      },
+                                    })
+                                  }
+                                  style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '6px 8px', fontSize: '12px' }}
+                                />
+                              </label>
+                              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', color: '#475569' }}>
+                                진료과 / 역할
+                                <input
+                                  type="text"
+                                  placeholder="마취통증의학과 / 집도의"
+                                  value={orFastingVerifications[selected.id]?.departmentOrRole ?? '마취통증의학과'}
+                                  onChange={(e) =>
+                                    setOrFastingVerifications({
+                                      ...orFastingVerifications,
+                                      [selected.id]: {
+                                        verifiedDoctor: orFastingVerifications[selected.id]?.verifiedDoctor ?? '',
+                                        departmentOrRole: e.target.value,
+                                        clinicalReason: orFastingVerifications[selected.id]?.clinicalReason ?? '',
+                                        isEmergencySurgery: selected.urgent || orFastingVerifications[selected.id]?.isEmergencySurgery || false,
+                                      },
+                                    })
+                                  }
+                                  style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '6px 8px', fontSize: '12px' }}
+                                />
+                              </label>
+                            </div>
+                            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', color: '#475569' }}>
+                              임상 사유 (응급수술 마취평가 및 기도 확보 등)*
+                              <input
+                                type="text"
+                                placeholder="예: 응급수술로 마취과 사전평가 및 흡인 방지 처치 완료 후 진행"
+                                value={orFastingVerifications[selected.id]?.clinicalReason ?? ''}
+                                onChange={(e) =>
+                                  setOrFastingVerifications({
+                                    ...orFastingVerifications,
+                                    [selected.id]: {
+                                      verifiedDoctor: orFastingVerifications[selected.id]?.verifiedDoctor ?? '',
+                                      departmentOrRole: orFastingVerifications[selected.id]?.departmentOrRole ?? '마취통증의학과',
+                                      clinicalReason: e.target.value,
+                                      isEmergencySurgery: selected.urgent || orFastingVerifications[selected.id]?.isEmergencySurgery || false,
+                                    },
+                                  })
+                                }
+                                style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '6px 8px', fontSize: '12px' }}
+                              />
+                            </label>
+                            <small style={{ color: '#64748b' }}>
+                              * 금식 미준수 환자의 수술 진행은 수술팀 및 마취과의 최종 임상 판단에 따르며 기록 후 검사 시작이 활성화됩니다.
+                            </small>
+                          </div>
                         )}
-                      </label>
+                      </div>
                     );
                   })}
                 </div>
@@ -2035,9 +2262,13 @@ export default function Home() {
                 title={
                   selected.status !== '대기'
                     ? `'대기' 상태인 검사만 시작할 수 있습니다. (현재: ${selected.status})`
-                    : isSafetyModality && !prepComplete
-                      ? `${selected.modality} 필수 안전 체크리스트 확인이 완료되지 않았습니다.`
-                      : '검사를 시작합니다.'
+                    : isOrCarm && !prepComplete
+                      ? '수술실 C-arm은 수술 전 금식 확인(확인 완료 또는 수술팀/마취과 의료진 확인 기록)이 완료되어야 시작 가능합니다.'
+                      : isUS && !prepComplete
+                        ? '초음파 프로토콜 필수 준비사항(금식/방광 충만) 확인이 완료되지 않았습니다.'
+                        : isSafetyModality && !prepComplete
+                          ? `${selected.modality} 필수 안전 체크리스트 확인이 완료되지 않았습니다.`
+                          : '검사를 시작합니다.'
                 }
                 onClick={() => updateExam(selected.id, { status: '검사중' })}
               >

@@ -49,7 +49,7 @@ export interface Exam {
   radiographerName?: string;
   startedAt?: FirestoreDateTime; // 검사 시작 일시
   completedAt?: FirestoreDateTime; // 검사 완료 일시
-  checklistId?: string; // CT/MRI 사전 체크리스트 참조 ID
+  checklistId?: string; // CT/MRI/OR C-arm 사전 체크리스트 참조 ID
   notes?: string;
   createdAt?: FirestoreDateTime;
   updatedAt?: FirestoreDateTime;
@@ -57,6 +57,23 @@ export interface Exam {
 
 // Safety Checklist Item check status: '확인 완료' | '해당 없음' | '추가 확인 필요' | '미확인'
 export type ChecklistItemStatus = '확인 완료' | '해당 없음' | '추가 확인 필요' | '미확인';
+
+// 수술실 C-arm 금식 상태 확인 타입
+// '확인 완료' | '해당 없음/의료진 확인' | '추가 확인 필요' | '미확인'
+export type OrFastingCheckStatus =
+  | '확인 완료'
+  | '해당 없음/의료진 확인'
+  | '추가 확인 필요'
+  | '미확인';
+
+// 수술실 C-arm 금식 관련 의료진(수술팀/마취과) 임상 확인 상세 정보
+export interface OrFastingMedicalStaffVerification {
+  verifiedDoctor: string; // 확인한 의료진 (예: 김마취 과장, 박외과 교수)
+  departmentOrRole: string; // 진료과/역할 (예: 마취통증의학과, 집도의 등)
+  verifiedAt?: FirestoreDateTime; // 확인 일시
+  clinicalReason: string; // 사유 (예: 응급 충수염 수술로 인한 흡인 위험 평가 및 기도 확보 완료)
+  isEmergencySurgery: boolean; // 응급 여부 (응급수술 플래그)
+}
 
 // Overall Checklist clearance status: '검사 가능' | '확인 필요' | '검사 보류'
 export type ChecklistOverallStatus = '검사 가능' | '확인 필요' | '검사 보류';
@@ -81,7 +98,7 @@ export interface ExamChecklist {
   id?: string;
   examId: string;
   patientId: string;
-  modality: 'CT' | 'MRI';
+  modality: 'CT' | 'MRI' | 'C-arm' | 'US';
   
   // Overall safety verdict
   overallStatus?: ChecklistOverallStatus; // '검사 가능' | '확인 필요' | '검사 보류'
@@ -92,6 +109,29 @@ export interface ExamChecklist {
     requiresFasting?: boolean;  // 금식 필수 여부
     requiresIvAccess?: boolean; // IV 정맥라인 필수 여부
     requiresKidneyFunction?: boolean; // 신장기능 필수 여부
+  };
+
+  // 초음파(US) 프로토콜별 사전 준비사항 정의
+  usProtocol?: {
+    requiresFasting?: boolean; // 상복부 초음파 등 6~8시간 금식 필수 여부
+    requiresFullBladder?: boolean; // 골반/비뇨기계 초음파 방광 충만(소변 참기) 필수 여부
+    requiresOtherPreparation?: boolean; // 기타 특정 사전 처치 필요 여부
+    otherPreparationDescription?: string; // 기타 준비사항 설명
+  };
+
+  // 초음파(US) 사전 준비사항 확인 상태
+  usPreparation?: {
+    fastingConfirmed?: ChecklistItemStatus; // 금식 확인 ('확인 완료' | '해당 없음' | '추가 확인 필요' | '미확인')
+    fullBladderConfirmed?: ChecklistItemStatus; // 방광 충만 확인 ('확인 완료' | '해당 없음' | '추가 확인 필요' | '미확인')
+    otherPreparationConfirmed?: ChecklistItemStatus; // 기타 준비 확인
+    notes?: string;
+  };
+
+  // 수술실 C-arm 전용 수술 전 안전 확인 항목
+  orCarmSafety?: {
+    isOrExam: boolean; // 수술실 C-arm 여부 (true인 경우에만 수술실 금식 안전 규칙 적용)
+    fastingStatus: OrFastingCheckStatus; // 금식 상태 확인 ('확인 완료' | '해당 없음/의료진 확인' | '추가 확인 필요' | '미확인')
+    medicalStaffVerification?: OrFastingMedicalStaffVerification; // '해당 없음/의료진 확인' 시 필수 기록되는 의료진 확인 정보
   };
 
   // Common Safety Items
