@@ -30,7 +30,7 @@ export interface Exam {
   radiographer_name?: string;
   status: ExamStatus;
   urgency: ExamUrgency;
-  interpretation_status: InterpretationStatus;
+  interpretation_status: InterpretationStatus | null;
   order_date: string;
   started_at?: string | null;
   completed_at?: string | null;
@@ -67,6 +67,71 @@ export interface ExamChecklist {
   checked_by?: string;
   checked_at?: string;
   created_at?: string;
+  updated_at?: string;
+}
+
+export interface Report {
+  id: string;
+  exam_id: string;
+  findings: string;
+  conclusion?: string | null;
+  status: string;
+  radiologist_id?: string | null;
+  radiologist_name?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Staff {
+  id: string;
+  name: string;
+  role: string;
+  department?: string | null;
+  email?: string | null;
+  created_at?: string;
+}
+
+export interface WorkSchedule {
+  id: string;
+  equipment_id?: string | null;
+  created_at?: string;
+}
+
+export interface Equipment {
+  id: string;
+  name: string;
+  modality: string;
+  room_name?: string | null;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface EquipmentInspection {
+  id: string;
+  equipment_id: string;
+  inspection_date: string;
+  inspector_name?: string | null;
+  notes?: string | null;
+  status?: string | null;
+  created_at?: string;
+}
+
+export interface Reservation {
+  id: string;
+  patient_id?: string | null;
+  patient_name?: string | null;
+  exam_name?: string | null;
+  modality?: string | null;
+  equipment_id?: string | null;
+  reservation_date: string;
+  reservation_time: string;
+  created_at?: string;
+}
+
+export interface SystemSetting {
+  key: string;
+  value: string;
   updated_at?: string;
 }
 

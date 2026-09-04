@@ -2,14 +2,21 @@ import { supabase, isSupabaseConfigured } from '../client';
 import {
   Exam,
   ExamQueryFilter,
-  ExamChecklist,
-  ChecklistOverallStatus,
-  ChecklistItemStatus,
+  ExamStatus,
 } from '../types';
+import { validateExamStart } from './checklistService';
+import { isEquipmentOperational } from './equipmentService';
 
-export async function getExams(filters?: ExamQueryFilter): Promise<Exam[]> {
+/**
+ * 전체 검사 목록 조회 (필터 지원)
+ */
+export async function getExams(
+  filters?: ExamQueryFilter
+): Promise<{ data: Exam[] | null; error: Error | null }> {
   if (!isSupabaseConfigured || !supabase) {
-    return [];
+    const err = new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+    console.error('[examService] getExams:', err.message);
+    return { data: null, error: err };
   }
 
   try {
@@ -18,13 +25,13 @@ export async function getExams(filters?: ExamQueryFilter): Promise<Exam[]> {
       .select('*')
       .order('order_date', { ascending: false });
 
-    if (filters?.status && filters.status !== '전체') {
+    if (filters?.status && filters.status !== '전체' && filters.status !== '전체 상태') {
       query = query.eq('status', filters.status);
     }
     if (filters?.modality && filters.modality !== '전체 Modality') {
       query = query.eq('modality', filters.modality);
     }
-    if (filters?.equipment_id && filters.equipment_id !== '전체') {
+    if (filters?.equipment_id && filters.equipment_id !== '전체' && filters.equipment_id !== '전체 장비') {
       query = query.eq('equipment_id', filters.equipment_id);
     }
     if (filters?.patient_id) {
@@ -33,20 +40,30 @@ export async function getExams(filters?: ExamQueryFilter): Promise<Exam[]> {
 
     const { data, error } = await query;
     if (error) {
-      console.error('[examService] getExams error:', error.message);
-      return [];
+      console.error('[examService] getExams DB error:', error.message);
+      return { data: null, error: new Error(error.message) };
     }
 
-    return (data as Exam[]) || [];
-  } catch (error) {
-    console.error('[examService] unexpected error in getExams:', error);
-    return [];
+    return { data: (data as Exam[]) || [], error: null };
+  } catch (error: any) {
+    console.error('[examService] getExams exception:', error);
+    return { data: null, error: new Error(error?.message || '검사 목록 조회 중 예외가 발생했습니다.') };
   }
 }
 
-export async function getExamById(id: string): Promise<Exam | null> {
-  if (!isSupabaseConfigured || !supabase || !id) {
-    return null;
+/**
+ * 검사 ID(Accession No/Exam ID)로 단일 검사 조회
+ */
+export async function getExamById(
+  id: string
+): Promise<{ data: Exam | null; error: Error | null }> {
+  if (!id) {
+    return { data: null, error: new Error('검사 ID가 제공되지 않았습니다.') };
+  }
+  if (!isSupabaseConfigured || !supabase) {
+    const err = new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+    console.error('[examService] getExamById:', err.message);
+    return { data: null, error: err };
   }
 
   try {
@@ -58,232 +75,175 @@ export async function getExamById(id: string): Promise<Exam | null> {
 
     if (error) {
       console.error(`[examService] getExamById (${id}) error:`, error.message);
-      return null;
+      return { data: null, error: new Error(error.message) };
     }
 
-    return (data as Exam) || null;
-  } catch (error) {
-    console.error(`[examService] unexpected error in getExamById (${id}):`, error);
-    return null;
+    return { data: (data as Exam) || null, error: null };
+  } catch (error: any) {
+    console.error(`[examService] getExamById (${id}) exception:`, error);
+    return { data: null, error: new Error(error?.message || '검사 조회 중 예외가 발생했습니다.') };
   }
-}
-
-function isItemCleared(status?: ChecklistItemStatus): boolean {
-  return status === '확인 완료' || status === '해당 없음';
 }
 
 /**
- * CT/MRI Fail-Closed Safety Validator (Supabase Version)
- * - Non-CT/MRI exams pass automatically.
- * - CT/MRI exams MUST pass: missing doc, incomplete item, or DB error will ALWAYS block (fail-closed).
+ * 특정 환자의 검사 이력 조회
  */
-export async function validateExamChecklist(
-  examId: string,
-  modality: string,
-  equipmentId?: string
-): Promise<{
-  isValid: boolean;
-  clearanceStatus: ChecklistOverallStatus;
-  reason?: string;
-  checklist?: ExamChecklist;
-}> {
-  const isOrCarm =
-    modality === 'C-arm' &&
-    (equipmentId?.includes('수술실') || equipmentId === 'C-arm · 수술실');
-  const isUS = modality === 'US' || modality === 'Ultrasound';
+export async function getExamsByPatient(
+  patientId: string
+): Promise<{ data: Exam[] | null; error: Error | null }> {
+  if (!patientId) {
+    return { data: null, error: new Error('환자 ID가 제공되지 않았습니다.') };
+  }
+  return getExams({ patient_id: patientId });
+}
 
-  // 1. Non-CT/MRI/OR-C-arm/US modalities pass automatically
-  if (!['CT', 'MRI'].includes(modality) && !isOrCarm && !isUS) {
-    return { isValid: true, clearanceStatus: '검사 가능' };
+/**
+ * 특정 장비에 배정된 검사 목록 조회
+ */
+export async function getExamsByEquipment(
+  equipmentId: string
+): Promise<{ data: Exam[] | null; error: Error | null }> {
+  if (!equipmentId) {
+    return { data: null, error: new Error('장비 ID가 제공되지 않았습니다.') };
+  }
+  return getExams({ equipment_id: equipmentId });
+}
+
+/**
+ * 검사 상태 변경 (업무 흐름 및 역방향 차단 규칙 엄격 적용)
+ *
+ * 상태 흐름 규칙:
+ * 1. '대기' -> '검사중' (시작)
+ * 2. '검사중' -> '완료' (완료)
+ * 3. 역방향 변경 금지: '완료' -> '검사중'/'대기' 불가, '검사중' -> '대기' 불가
+ * 4. '완료' 시: interpretation_status = '판독대기' 자동 지정, completed_at 타임스탬프 기록
+ * 5. '대기' / '검사중' 시: interpretation_status = NULL 보장
+ */
+export async function updateExamStatus(
+  examId: string,
+  newStatus: ExamStatus
+): Promise<{ data: Exam | null; error: Error | null }> {
+  if (!examId || !newStatus) {
+    return { data: null, error: new Error('검사 ID 또는 변경할 상태가 유효하지 않습니다.') };
+  }
+  if (!isSupabaseConfigured || !supabase) {
+    const err = new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+    return { data: null, error: err };
   }
 
-  // 2. Fail-closed: DB is inaccessible -> BLOCK
-  if (!isSupabaseConfigured || !supabase) {
-    return {
-      isValid: false,
-      clearanceStatus: '검사 보류',
-      reason: '시스템 안전 검증 모듈이 준비되지 않아 검사를 시작할 수 없습니다. (검사 보류)',
-    };
+  // 1. 현재 검사 상태 조회
+  const { data: currentExam, error: fetchErr } = await getExamById(examId);
+  if (fetchErr || !currentExam) {
+    return { data: null, error: new Error(fetchErr?.message || '검사 정보를 찾을 수 없습니다.') };
+  }
+
+  const prevStatus = currentExam.status;
+
+  // 동일 상태일 경우 패스
+  if (prevStatus === newStatus) {
+    return { data: currentExam, error: null };
+  }
+
+  // 2. 역방향 상태 변경 차단
+  if (prevStatus === '완료') {
+    return { data: null, error: new Error('이미 검사가 완료된 건은 상태를 되돌릴 수 없습니다.') };
+  }
+  if (prevStatus === '검사중' && newStatus === '대기') {
+    return { data: null, error: new Error('이미 진행 중인 검사는 대기 상태로 역방향 변경할 수 없습니다.') };
+  }
+
+  // 3. 업데이트 필드 구성
+  const updatePayload: Record<string, any> = {
+    status: newStatus,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (newStatus === '검사중') {
+    updatePayload.interpretation_status = null;
+    if (!currentExam.started_at) {
+      updatePayload.started_at = new Date().toISOString();
+    }
+  } else if (newStatus === '완료') {
+    updatePayload.interpretation_status = '판독대기';
+    updatePayload.completed_at = new Date().toISOString();
+  } else if (newStatus === '대기') {
+    updatePayload.interpretation_status = null;
   }
 
   try {
     const { data, error } = await supabase
-      .from('exam_checklists')
-      .select('*')
-      .eq('exam_id', examId)
+      .from('exams')
+      .update(updatePayload)
+      .eq('id', examId)
+      .select()
       .maybeSingle();
 
     if (error) {
-      console.error('[examService] validateExamChecklist DB error:', error.message);
-      return {
-        isValid: false,
-        clearanceStatus: '검사 보류',
-        reason: '안전 검증 모듈 연결 실패로 검사를 시작할 수 없습니다.',
-      };
+      console.error(`[examService] updateExamStatus (${examId} -> ${newStatus}) error:`, error.message);
+      return { data: null, error: new Error(error.message) };
     }
 
-    if (!data) {
-      if (isUS) {
-        return { isValid: true, clearanceStatus: '검사 가능' };
-      }
-      return {
-        isValid: false,
-        clearanceStatus: '검사 보류',
-        reason: `${modality} 사전 안전 체크리스트가 등록되지 않았습니다. 체크리스트 확인을 먼저 완료해 주세요.`,
-      };
-    }
-
-    const checklist = data as ExamChecklist;
-
-    // Explicit Hold Check
-    if (checklist.overall_status === '검사 보류') {
-      return {
-        isValid: false,
-        clearanceStatus: '검사 보류',
-        reason: '체크리스트 판정 상태가 [검사 보류]로 지정되어 있습니다.',
-        checklist,
-      };
-    }
-
-    // CT Safety Validation
-    if (modality === 'CT') {
-      if (!isItemCleared(checklist.pregnancy_risk)) {
-        return { isValid: false, clearanceStatus: '확인 필요', reason: '임신 가능성 확인이 완료되지 않았습니다.', checklist };
-      }
-      if (!isItemCleared(checklist.mobility_status)) {
-        return { isValid: false, clearanceStatus: '확인 필요', reason: '이동 및 검사 체위 유지 가능 여부가 확인되지 않았습니다.', checklist };
-      }
-      if (checklist.uses_contrast) {
-        if (!isItemCleared(checklist.contrast_consent_confirmed)) {
-          return { isValid: false, clearanceStatus: '확인 필요', reason: '조영제 사용 동의서가 확인되지 않았습니다.', checklist };
-        }
-        if (!isItemCleared(checklist.contrast_allergy)) {
-          return { isValid: false, clearanceStatus: '확인 필요', reason: '조영제 알레르기 반응 이력 확인이 완료되지 않았습니다.', checklist };
-        }
-        if (!isItemCleared(checklist.kidney_function)) {
-          return { isValid: false, clearanceStatus: '확인 필요', reason: '신장기능(eGFR/Creatinine) 수치 확인이 완료되지 않았습니다.', checklist };
-        }
-        if (!isItemCleared(checklist.iv_access_confirmed)) {
-          return { isValid: false, clearanceStatus: '확인 필요', reason: '정맥주사(IV) 혈관 라인 확보가 확인되지 않았습니다.', checklist };
-        }
-      }
-    }
-
-    // MRI Safety Validation
-    if (modality === 'MRI') {
-      if (!isItemCleared(checklist.pregnancy_risk)) {
-        return { isValid: false, clearanceStatus: '확인 필요', reason: '임신 가능성 확인이 완료되지 않았습니다.', checklist };
-      }
-      if (checklist.pacemaker_or_electronics === '확인 완료') {
-        const mrStatus = checklist.pacemaker_mr_status;
-        if (!mrStatus || mrStatus === '미확인') {
-          return {
-            isValid: false,
-            clearanceStatus: '검사 보류',
-            reason: '체내 전자기기의 MR 안전성 분류가 확인되지 않았습니다. (검사 보류)',
-            checklist,
-          };
-        }
-      } else if (!isItemCleared(checklist.pacemaker_or_electronics)) {
-        return {
-          isValid: false,
-          clearanceStatus: '검사 보류',
-          reason: '심박동기 및 체내 전자기기 확인이 완료되지 않았습니다.',
-          checklist,
-        };
-      }
-
-      if (checklist.metallic_implants === '확인 완료') {
-        const implantStatus = checklist.implant_mr_status;
-        if (!implantStatus || implantStatus === '미확인') {
-          return {
-            isValid: false,
-            clearanceStatus: '확인 필요',
-            reason: '체내 금속 보형물의 MR 안전성 분류(MR Safe / MR Conditional)가 확인되지 않았습니다.',
-            checklist,
-          };
-        }
-      } else if (!isItemCleared(checklist.metallic_implants)) {
-        return {
-          isValid: false,
-          clearanceStatus: '확인 필요',
-          reason: '금속성 보형물/삽입물 확인이 완료되지 않았습니다.',
-          checklist,
-        };
-      }
-
-      if (!isItemCleared(checklist.clips_coils_stents)) {
-        return { isValid: false, clearanceStatus: '확인 필요', reason: '수술용 클립/코일/스텐트 확인이 완료되지 않았습니다.', checklist };
-      }
-      if (!isItemCleared(checklist.foreign_metal_bodies)) {
-        return { isValid: false, clearanceStatus: '확인 필요', reason: '금속성 이물질 여부 확인이 완료되지 않았습니다.', checklist };
-      }
-      if (!isItemCleared(checklist.removable_metals_hearing_aids)) {
-        return { isValid: false, clearanceStatus: '확인 필요', reason: '보청기 및 체외 금속물질 탈거 확인이 완료되지 않았습니다.', checklist };
-      }
-      if (!isItemCleared(checklist.claustrophobia)) {
-        return { isValid: false, clearanceStatus: '확인 필요', reason: '폐쇄공포증 여부 확인이 완료되지 않았습니다.', checklist };
-      }
-    }
-
-    // Operating Room C-arm Safety Validation
-    if (isOrCarm) {
-      const orSafety = checklist.or_carm_safety;
-      const fastingStatus = orSafety?.fastingStatus;
-      if (!fastingStatus || fastingStatus === '미확인' || fastingStatus === '추가 확인 필요') {
-        return {
-          isValid: false,
-          clearanceStatus: '확인 필요',
-          reason: '수술실 C-arm 검사 전 금식 상태 확인이 완료되지 않았습니다. (추가 확인 필요)',
-          checklist,
-        };
-      }
-      if (fastingStatus === '해당 없음/의료진 확인') {
-        const staffVerif = orSafety?.medicalStaffVerification;
-        if (!staffVerif || !staffVerif.verifiedDoctor || !staffVerif.clinicalReason) {
-          return {
-            isValid: false,
-            clearanceStatus: '확인 필요',
-            reason: '수술팀/마취과 의료진의 임상 확인 정보(확인 의료진, 사유)가 기록되어야 검사 시작이 가능합니다.',
-            checklist,
-          };
-        }
-      }
-    }
-
-    // Ultrasound Protocol Preparation Validation
-    if (isUS) {
-      const usProto = checklist.us_protocol || {};
-      const usPrep = checklist.us_preparation || {};
-      if (usProto.requiresFasting === true && !isItemCleared(usPrep.fastingConfirmed)) {
-        return {
-          isValid: false,
-          clearanceStatus: '확인 필요',
-          reason: '해당 초음파 검사는 사전 금식(6~8시간) 확인이 필수입니다.',
-          checklist,
-        };
-      }
-      if (usProto.requiresFullBladder === true && !isItemCleared(usPrep.fullBladderConfirmed)) {
-        return {
-          isValid: false,
-          clearanceStatus: '확인 필요',
-          reason: '해당 초음파 검사는 방광 충만(소변 참기) 상태 확인이 필수입니다.',
-          checklist,
-        };
-      }
-    }
-
-    return {
-      isValid: true,
-      clearanceStatus: '검사 가능',
-      checklist,
-    };
+    return { data: (data as Exam) || null, error: null };
   } catch (error: any) {
-    console.error('[examService] validateExamChecklist error (fail-closed):', error);
+    console.error(`[examService] updateExamStatus exception:`, error);
+    return { data: null, error: new Error(error?.message || '검사 상태 업데이트 중 예외가 발생했습니다.') };
+  }
+}
+
+/**
+ * 검사 시작 (대기 -> 검사중)
+ * - 안전성 체크리스트 (CT/MRI/OR C-arm/US) Fail-closed 사전 검증 통과 필수
+ * - 배정 장비 가동 상태(고장/점검중/사용중지 여부) 사전 검증
+ */
+export async function startExam(
+  examId: string
+): Promise<{ data: Exam | null; error: Error | null }> {
+  // 1. 현재 검사 확인
+  const { data: exam, error: fetchErr } = await getExamById(examId);
+  if (fetchErr || !exam) {
+    return { data: null, error: new Error(fetchErr?.message || '검사 정보를 찾을 수 없습니다.') };
+  }
+
+  if (exam.status !== '대기') {
+    return { data: null, error: new Error(`검사를 시작할 수 없는 상태입니다 (현재 상태: ${exam.status}).`) };
+  }
+
+  // 2. 장비 가동 가능 여부 체크
+  if (exam.equipment_id) {
+    const equipCheck = await isEquipmentOperational(exam.equipment_id);
+    if (!equipCheck.operational) {
+      return { data: null, error: new Error(equipCheck.reason || '배정된 장비가 가동 불가능 상태입니다.') };
+    }
+  }
+
+  // 3. 안전 체크리스트 Fail-Closed 검증 (checklistService)
+  const safetyCheck = await validateExamStart(exam.id, exam.modality, exam.equipment_id || undefined);
+  if (!safetyCheck.isValid) {
     return {
-      isValid: false,
-      clearanceStatus: '검사 보류',
-      reason: '안전 점검 시스템 응답 오류로 검사가 보류되었습니다. 전산 상태를 확인해 주세요.',
+      data: null,
+      error: new Error(`[환자 안전 검증 보류] ${safetyCheck.reason || '안전 체크리스트 검증을 통과하지 못했습니다.'}`),
     };
   }
+
+  // 4. 상태 변경
+  return updateExamStatus(examId, '검사중');
+}
+
+/**
+ * 검사 완료 (검사중 -> 완료)
+ * - 완료 즉시 interpretation_status = '판독대기'로 자동 전이
+ */
+export async function completeExam(
+  examId: string
+): Promise<{ data: Exam | null; error: Error | null }> {
+  const { data: exam, error: fetchErr } = await getExamById(examId);
+  if (fetchErr || !exam) {
+    return { data: null, error: new Error(fetchErr?.message || '검사 정보를 찾을 수 없습니다.') };
+  }
+
+  if (exam.status !== '검사중') {
+    return { data: null, error: new Error(`진행 중인 검사만 완료 처리할 수 있습니다 (현재 상태: ${exam.status}).`) };
+  }
+
+  return updateExamStatus(examId, '완료');
 }
