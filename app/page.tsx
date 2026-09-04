@@ -1386,6 +1386,7 @@ export default function Home() {
                     </button>
                   </p>
                   <textarea
+                    rows={8}
                     disabled={reportRole !== '전문의'}
                     value={reportTexts[reportSelected.id] ?? ''}
                     onChange={(e) =>
