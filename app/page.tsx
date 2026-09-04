@@ -61,6 +61,21 @@ const kpis = [
   ['검사 완료', '91', '', 'green'],
   ['응급 검사', '5', '즉시 확인 필요', 'red'],
 ];
+const calculateAge = (birthDate?: string, fallbackAge?: number): number => {
+  if (!birthDate) return fallbackAge ?? 0;
+  const [bYear, bMonth, bDay] = birthDate.split('-').map(Number);
+  if (!bYear || !bMonth || !bDay) return fallbackAge ?? 0;
+  // 시스템 기준일자 (2026-08-29)
+  const refYear = 2026;
+  const refMonth = 8;
+  const refDay = 29;
+  let age = refYear - bYear;
+  if (refMonth < bMonth || (refMonth === bMonth && refDay < bDay)) {
+    age--;
+  }
+  return age;
+};
+
 type Exam = {
   id: string;
   date: string;
@@ -68,6 +83,8 @@ type Exam = {
   name: string;
   sex: string;
   age: number;
+  birthDate?: string;
+  phone?: string;
   exam: string;
   modality: string;
   equipment: string;
@@ -89,6 +106,8 @@ const initialWorklist: Exam[] = [
     name: '김민준',
     sex: '남',
     age: 64,
+    birthDate: '1962-03-17',
+    phone: '010-0000-0001',
     exam: 'Chest PA',
     modality: 'X-ray',
     equipment: 'X-ray 1',
@@ -107,6 +126,8 @@ const initialWorklist: Exam[] = [
     name: '이서연',
     sex: '여',
     age: 52,
+    birthDate: '1974-05-22',
+    phone: '010-0000-0002',
     exam: 'Brain CT (CE)',
     modality: 'CT',
     equipment: 'CT-01',
@@ -125,6 +146,8 @@ const initialWorklist: Exam[] = [
     name: '박지우',
     sex: '남',
     age: 45,
+    birthDate: '1981-07-09',
+    phone: '010-0000-0003',
     exam: 'L-spine MRI',
     modality: 'MRI',
     equipment: 'MR-01',
@@ -143,6 +166,8 @@ const initialWorklist: Exam[] = [
     name: '최은지',
     sex: '여',
     age: 38,
+    birthDate: '1988-02-14',
+    phone: '010-0000-0004',
     exam: 'Abdomen US',
     modality: 'Ultrasound',
     equipment: 'US-01',
@@ -161,6 +186,8 @@ const initialWorklist: Exam[] = [
     name: '정현우',
     sex: '남',
     age: 31,
+    birthDate: '1995-04-03',
+    phone: '010-0000-0005',
     exam: 'Knee AP/LAT',
     modality: 'X-ray',
     equipment: 'X-ray 2',
@@ -179,6 +206,8 @@ const initialWorklist: Exam[] = [
     name: '유지아',
     sex: '여',
     age: 47,
+    birthDate: '1979-06-28',
+    phone: '010-0000-0006',
     exam: 'Mammography',
     modality: 'Mammo',
     equipment: 'MG-01',
@@ -197,6 +226,8 @@ const initialWorklist: Exam[] = [
     name: '임도현',
     sex: '남',
     age: 57,
+    birthDate: '1969-01-11',
+    phone: '010-0000-0007',
     exam: 'C-spine AP/LAT',
     modality: 'X-ray',
     equipment: 'X-ray 1',
@@ -215,6 +246,8 @@ const initialWorklist: Exam[] = [
     name: '서하준',
     sex: '남',
     age: 42,
+    birthDate: '1984-08-19',
+    phone: '010-0000-0008',
     exam: '건강검진 Chest PA',
     modality: 'X-ray',
     equipment: '건강검진 X-ray',
@@ -233,6 +266,8 @@ const initialWorklist: Exam[] = [
     name: '강수빈',
     sex: '여',
     age: 29,
+    birthDate: '1997-04-25',
+    phone: '010-0000-0009',
     exam: 'OR C-arm Guidance',
     modality: 'C-arm',
     equipment: 'C-arm · 수술실',
@@ -251,6 +286,8 @@ const initialWorklist: Exam[] = [
     name: '조영희',
     sex: '여',
     age: 73,
+    birthDate: '1953-06-30',
+    phone: '010-0000-0010',
     exam: 'Portable Chest AP',
     modality: 'Portable',
     equipment: 'Portable X-ray',
@@ -881,7 +918,8 @@ export default function Home() {
       exams.find(
         (exam) =>
           exam.id.toLowerCase().includes(value) ||
-          exam.name.toLowerCase().includes(value),
+          exam.name.toLowerCase().includes(value) ||
+          (exam.birthDate && exam.birthDate.toLowerCase().includes(value)),
       ) ?? null,
     );
   };
@@ -1037,7 +1075,7 @@ export default function Home() {
                       <h3>
                         {patientResult.name}{' '}
                         <small>
-                          {patientResult.sex} · {patientResult.age}세
+                          {patientResult.sex} · {calculateAge(patientResult.birthDate, patientResult.age)}세
                         </small>
                       </h3>
                       <p>
@@ -1052,7 +1090,7 @@ export default function Home() {
                     </div>
                     <div>
                       <span>생년월일</span>
-                      <strong>19{patientResult.id.slice(-2)}-04-12</strong>
+                      <strong>{patientResult.birthDate ?? '1962-03-17'}</strong>
                     </div>
                     <div>
                       <span>진료과</span>
@@ -1820,7 +1858,7 @@ export default function Home() {
                         <td>
                           {exam.name}
                           <small className="patient-meta">
-                            {exam.sex}/{exam.age}
+                            {exam.sex}/{calculateAge(exam.birthDate, exam.age)}
                           </small>
                         </td>
                         <td>{exam.exam}</td>
@@ -1969,7 +2007,7 @@ export default function Home() {
                 <h4>
                   {selected.name}{' '}
                   <small>
-                    {selected.sex}/{selected.age}세
+                    {selected.sex}/{calculateAge(selected.birthDate, selected.age)}세
                   </small>
                 </h4>
                 <p>
