@@ -912,7 +912,9 @@ export default function Home() {
     <main className="app-shell">
       <aside className={`sidebar ${side ? 'open' : ''}`}>
         <div className="brand">
-          <div className="brand-mark">+</div>
+          <div className="brand-mark">
+            <img src="/logo.png" alt="예수사랑병원 로고" />
+          </div>
           <div>
             <strong>예수사랑병원</strong>
             <small>Radiology Information System</small>
