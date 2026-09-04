@@ -914,12 +914,15 @@ export default function Home() {
   };
   const findPatient = () => {
     const value = patientQuery.trim().toLowerCase();
+    const cleanPhone = value.replace(/[^0-9]/g, '');
     setPatientResult(
       exams.find(
         (exam) =>
           exam.id.toLowerCase().includes(value) ||
           exam.name.toLowerCase().includes(value) ||
-          (exam.birthDate && exam.birthDate.toLowerCase().includes(value)),
+          (exam.birthDate && exam.birthDate.toLowerCase().includes(value)) ||
+          (cleanPhone.length >= 4 && exam.phone && exam.phone.replace(/[^0-9]/g, '').includes(cleanPhone)) ||
+          (exam.phone && exam.phone.includes(value)),
       ) ?? null,
     );
   };
@@ -1048,7 +1051,7 @@ export default function Home() {
                 <div>
                   <span>REGISTRY / PATIENT SEARCH</span>
                   <h2>환자 조회</h2>
-                  <p>환자번호, 이름 또는 생년월일로 환자를 조회합니다.</p>
+                  <p>환자번호, 이름, 생년월일 또는 연락처로 환자를 조회합니다.</p>
                 </div>
                 <button onClick={() => setActive('Dashboard')}>
                   <X size={18} />
@@ -1061,7 +1064,7 @@ export default function Home() {
                   value={patientQuery}
                   onChange={(e) => setPatientQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && findPatient()}
-                  placeholder="환자번호 / 이름 / 생년월일 (YYYY-MM-DD)"
+                  placeholder="환자번호 / 이름 / 생년월일 / 연락처"
                 />
                 <button onClick={findPatient}>조회</button>
               </div>
@@ -1091,6 +1094,10 @@ export default function Home() {
                     <div>
                       <span>생년월일</span>
                       <strong>{patientResult.birthDate ?? '1962-03-17'}</strong>
+                    </div>
+                    <div>
+                      <span>연락처</span>
+                      <strong>{patientResult.phone ?? '010-0000-0001'}</strong>
                     </div>
                     <div>
                       <span>진료과</span>
