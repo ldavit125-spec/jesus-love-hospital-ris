@@ -27,8 +27,15 @@ import {
   Zap,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getExams, getPatients } from '@/lib/firebase/services';
+import { getExams, getPatients as getFirebasePatients } from '@/lib/firebase/services';
 import { isFirebaseConfigured, db } from '@/lib/firebase/config';
+import {
+  getPatients,
+  getPatientById,
+  searchPatients,
+  calculateAgeFromBirthDate,
+  type PatientWithCalculatedAge,
+} from '@/lib/supabase/services';
 
 const navItems = [
   ['Dashboard', LayoutDashboard],
@@ -380,6 +387,10 @@ export default function Home() {
     [patientResult, setPatientResult] = useState<Exam | null>(null),
     [callQueues, setCallQueues] = useState<Record<string, string[]>>({}),
     [callingId, setCallingId] = useState<string | null>(null);
+  const [supabasePatients, setSupabasePatients] = useState<PatientWithCalculatedAge[]>([]);
+  const [selectedSupabasePatient, setSelectedSupabasePatient] = useState<PatientWithCalculatedAge | null>(null);
+  const [isSearchingPatient, setIsSearchingPatient] = useState(false);
+  const [patientSearchError, setPatientSearchError] = useState<string | null>(null);
   const [reservationPatient, setReservationPatient] = useState('');
   const [reservationExam, setReservationExam] = useState('');
   const [reservationRoom, setReservationRoom] = useState('X-ray 1');
@@ -399,7 +410,7 @@ export default function Home() {
       try {
         const [firestoreExams, _firestorePatients] = await Promise.all([
           getExams(),
-          getPatients(),
+          getFirebasePatients(),
         ]);
         if (!isMounted) return;
         if (firestoreExams && firestoreExams.length > 0) {
@@ -912,20 +923,95 @@ export default function Home() {
     }
     updateExam(exam.id, { tech });
   };
-  const findPatient = () => {
-    const value = patientQuery.trim().toLowerCase();
-    const cleanPhone = value.replace(/[^0-9]/g, '');
-    setPatientResult(
-      exams.find(
-        (exam) =>
-          exam.id.toLowerCase().includes(value) ||
-          exam.name.toLowerCase().includes(value) ||
-          (exam.birthDate && exam.birthDate.toLowerCase().includes(value)) ||
-          (cleanPhone.length >= 4 && exam.phone && exam.phone.replace(/[^0-9]/g, '').includes(cleanPhone)) ||
-          (exam.phone && exam.phone.includes(value)),
-      ) ?? null,
-    );
+
+  const loadSupabasePatients = async () => {
+    setIsSearchingPatient(true);
+    setPatientSearchError(null);
+    try {
+      const res = await getPatients();
+      if (res.error) {
+        setPatientSearchError(`환자 목록 조회 실패: ${res.error.message}`);
+        setSupabasePatients([]);
+        setSelectedSupabasePatient(null);
+      } else {
+        const patients = res.data || [];
+        setSupabasePatients(patients);
+        if (patients.length > 0) {
+          setSelectedSupabasePatient((prev) => prev ? (patients.find(p => p.id === prev.id) || patients[0]) : patients[0]);
+        } else {
+          setSelectedSupabasePatient(null);
+        }
+      }
+    } catch (err: any) {
+      setPatientSearchError(`환자 목록 조회 중 오류 발생: ${err?.message || '알 수 없는 오류'}`);
+      setSupabasePatients([]);
+      setSelectedSupabasePatient(null);
+    } finally {
+      setIsSearchingPatient(false);
+    }
   };
+
+  const handleSelectPatient = async (p: PatientWithCalculatedAge) => {
+    // getPatientById 사용하여 상세 정보 조회
+    try {
+      const res = await getPatientById(p.id);
+      if (res.data) {
+        setSelectedSupabasePatient(res.data);
+      } else {
+        setSelectedSupabasePatient(p);
+      }
+    } catch {
+      setSelectedSupabasePatient(p);
+    }
+  };
+
+  const findPatient = async () => {
+    const value = patientQuery.trim();
+    setIsSearchingPatient(true);
+    setPatientSearchError(null);
+    try {
+      if (!value) {
+        const res = await getPatients();
+        if (res.error) {
+          setPatientSearchError(`환자 목록 조회 실패: ${res.error.message}`);
+          setSupabasePatients([]);
+          setSelectedSupabasePatient(null);
+        } else {
+          const list = res.data || [];
+          setSupabasePatients(list);
+          setSelectedSupabasePatient(list.length > 0 ? list[0] : null);
+        }
+        return;
+      }
+
+      const res = await searchPatients(value);
+      if (res.error) {
+        setPatientSearchError(`환자 검색 실패: ${res.error.message}`);
+        setSupabasePatients([]);
+        setSelectedSupabasePatient(null);
+      } else {
+        const list = res.data || [];
+        setSupabasePatients(list);
+        if (list.length > 0) {
+          setSelectedSupabasePatient(list[0]);
+        } else {
+          setSelectedSupabasePatient(null);
+        }
+      }
+    } catch (err: any) {
+      setPatientSearchError(`환자 검색 중 오류 발생: ${err?.message || '알 수 없는 오류'}`);
+      setSupabasePatients([]);
+      setSelectedSupabasePatient(null);
+    } finally {
+      setIsSearchingPatient(false);
+    }
+  };
+
+  useEffect(() => {
+    if (active === '환자 조회' && supabasePatients.length === 0 && !patientSearchError) {
+      loadSupabasePatients();
+    }
+  }, [active]);
   const todayExams = exams.filter((exam) => exam.date === date);
   const liveKpis = kpis.map((item) => {
     if (item[0] === '오늘 검사') {
@@ -1051,12 +1137,13 @@ export default function Home() {
                 <div>
                   <span>REGISTRY / PATIENT SEARCH</span>
                   <h2>환자 조회</h2>
-                  <p>환자번호, 이름, 생년월일 또는 연락처로 환자를 조회합니다.</p>
+                  <p>Supabase 환자 데이터베이스에서 환자번호, 이름, 또는 연락처로 환자를 조회합니다.</p>
                 </div>
                 <button onClick={() => setActive('Dashboard')}>
                   <X size={18} />
                 </button>
               </div>
+
               <div className="patient-searchbar">
                 <Search size={17} />
                 <input
@@ -1064,48 +1151,118 @@ export default function Home() {
                   value={patientQuery}
                   onChange={(e) => setPatientQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && findPatient()}
-                  placeholder="환자번호 / 이름 / 생년월일 / 연락처"
+                  placeholder="환자번호 / 환자명 / 연락처 검색"
                 />
-                <button onClick={findPatient}>조회</button>
+                <button onClick={findPatient} disabled={isSearchingPatient}>
+                  {isSearchingPatient ? '조회중...' : '조회'}
+                </button>
               </div>
-              {patientResult ? (
+
+              {isSearchingPatient && (
+                <div className="patient-status-bar loading">
+                  <span>Supabase에서 환자 데이터를 조회 중입니다...</span>
+                </div>
+              )}
+
+              {patientSearchError && !isSearchingPatient && (
+                <div className="patient-status-bar error">
+                  <span>{patientSearchError}</span>
+                  <button onClick={loadSupabasePatients}>다시 시도</button>
+                </div>
+              )}
+
+              <div className="patient-list-header">
+                <h4>환자 목록 ({supabasePatients.length}명)</h4>
+                <span>행을 클릭하면 상세 정보를 확인할 수 있습니다.</span>
+              </div>
+
+              <div className="patient-table-container">
+                <table className="patient-table">
+                  <thead>
+                    <tr>
+                      <th>환자번호</th>
+                      <th>환자명</th>
+                      <th>성별</th>
+                      <th>나이</th>
+                      <th>생년월일</th>
+                      <th>연락처</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supabasePatients.map((p) => {
+                      const isSelected = selectedSupabasePatient?.id === p.id;
+                      return (
+                        <tr
+                          key={p.id}
+                          className={isSelected ? 'selected-row' : ''}
+                          onClick={() => handleSelectPatient(p)}
+                        >
+                          <td><strong>{p.id}</strong></td>
+                          <td>{p.name}</td>
+                          <td>
+                            <span className={`patient-gender-tag ${p.gender === '남' ? 'male' : 'female'}`}>
+                              {p.gender || '-'}
+                            </span>
+                          </td>
+                          <td>{p.calculated_age}세</td>
+                          <td>{p.birth_date || '-'}</td>
+                          <td>{p.phone || '-'}</td>
+                        </tr>
+                      );
+                    })}
+                    {supabasePatients.length === 0 && !isSearchingPatient && !patientSearchError && (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '30px 0', color: '#64748b' }}>
+                          일치하는 환자가 없습니다.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {selectedSupabasePatient ? (
                 <div className="patient-detail">
                   <div className="patient-banner">
                     <div className="patient-avatar large">
-                      {patientResult.name[0]}
+                      {selectedSupabasePatient.name[0]}
                     </div>
                     <div>
                       <h3>
-                        {patientResult.name}{' '}
+                        {selectedSupabasePatient.name}{' '}
                         <small>
-                          {patientResult.sex} · {calculateAge(patientResult.birthDate, patientResult.age)}세
+                          {selectedSupabasePatient.gender || '-'} · {selectedSupabasePatient.calculated_age}세
                         </small>
                       </h3>
                       <p>
-                        {patientResult.id} · {patientResult.date} 등록
+                        {selectedSupabasePatient.id} · {selectedSupabasePatient.created_at ? selectedSupabasePatient.created_at.split('T')[0] : '2026-08-29'} 등록
                       </p>
                     </div>
                   </div>
                   <div className="patient-info-grid">
                     <div>
                       <span>환자번호</span>
-                      <strong>{patientResult.id}</strong>
+                      <strong>{selectedSupabasePatient.id}</strong>
+                    </div>
+                    <div>
+                      <span>환자명</span>
+                      <strong>{selectedSupabasePatient.name}</strong>
+                    </div>
+                    <div>
+                      <span>성별</span>
+                      <strong>{selectedSupabasePatient.gender || '-'}</strong>
+                    </div>
+                    <div>
+                      <span>나이</span>
+                      <strong>{selectedSupabasePatient.calculated_age}세</strong>
                     </div>
                     <div>
                       <span>생년월일</span>
-                      <strong>{patientResult.birthDate ?? '1962-03-17'}</strong>
+                      <strong>{selectedSupabasePatient.birth_date || '-'}</strong>
                     </div>
                     <div>
                       <span>연락처</span>
-                      <strong>{patientResult.phone ?? '010-0000-0001'}</strong>
-                    </div>
-                    <div>
-                      <span>진료과</span>
-                      <strong>{patientResult.department}</strong>
-                    </div>
-                    <div>
-                      <span>주치의</span>
-                      <strong>{patientResult.doctor}</strong>
+                      <strong>{selectedSupabasePatient.phone || '-'}</strong>
                     </div>
                   </div>
                   <div className="history-section">
@@ -1113,8 +1270,8 @@ export default function Home() {
                     {exams
                       .filter(
                         (exam) =>
-                          exam.id === patientResult.id ||
-                          exam.name === patientResult.name,
+                          exam.id === selectedSupabasePatient.id ||
+                          exam.name === selectedSupabasePatient.name,
                       )
                       .map((exam) => (
                         <div className="history-row" key={exam.id}>
@@ -1126,6 +1283,15 @@ export default function Home() {
                           <Status s={exam.status} />
                         </div>
                       ))}
+                    {exams.filter(
+                      (exam) =>
+                        exam.id === selectedSupabasePatient.id ||
+                        exam.name === selectedSupabasePatient.name,
+                    ).length === 0 && (
+                      <div style={{ padding: '12px 0', fontSize: '13px', color: '#94a3b8' }}>
+                        오늘 예정된 검사 오더가 없습니다.
+                      </div>
+                    )}
                     <h4>과거 검사 이력</h4>
                     <div className="history-row muted">
                       <span>2026-06-18</span>

@@ -1331,9 +1331,114 @@ tbody tr {
   font-size: 13px;
   font-weight: 600;
 }
+.patient-table-container {
+  padding: 0 24px 20px;
+  overflow-x: auto;
+}
+.patient-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  text-align: left;
+}
+.patient-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.patient-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  white-space: nowrap;
+}
+.patient-table tbody tr {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.patient-table tbody tr:hover {
+  background: #f1f6fc;
+}
+.patient-table tbody tr.selected-row {
+  background: #e8f1fb;
+  font-weight: 500;
+}
+.patient-table tbody tr.selected-row td:first-child {
+  border-left: 3px solid #245e9f;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+.patient-table .patient-gender-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.patient-table .patient-gender-tag.male {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.patient-table .patient-gender-tag.female {
+  background: #fce7f3;
+  color: #be185d;
+}
+.patient-status-bar {
+  margin: 0 24px 16px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.patient-status-bar.loading {
+  background: #f0f7ff;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+}
+.patient-status-bar.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+.patient-status-bar button {
+  background: #dc2626;
+  color: #fff;
+  border: 0;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.patient-status-bar.loading button {
+  background: #0284c7;
+}
+.patient-list-header {
+  padding: 0 24px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.patient-list-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #334155;
+}
+.patient-list-header span {
+  font-size: 12.5px;
+  color: #64748b;
+}
 .patient-info-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 16px;
   padding: 18px 0;
 }
