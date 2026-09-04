@@ -1,0 +1,79 @@
+export type PatientGender = '남' | '여' | '기타';
+export type StaffRole = '방사선사' | '전문의' | '간호사' | '관리자';
+export type ExamStatus = '대기' | '검사중' | '완료' | '취소';
+export type ExamUrgency = '일반' | '응급';
+export type InterpretationStatus = '판독대기' | '판독중' | '판독완료';
+export type ChecklistOverallStatus = '검사 가능' | '확인 필요' | '검사 보류';
+export type ChecklistItemStatus = '확인 완료' | '미확인' | '해당 없음' | '추가 확인 필요';
+export type MRStatus = 'MR Safe' | 'MR Conditional' | 'MR Unsafe' | '미확인';
+
+export interface Patient {
+  id: string;
+  name: string;
+  birth_date?: string | null;
+  gender?: PatientGender;
+  phone?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Exam {
+  id: string;
+  patient_id?: string | null;
+  patient_name: string;
+  exam_name: string;
+  modality: string;
+  equipment_id?: string | null;
+  department?: string;
+  order_doctor?: string;
+  radiographer_id?: string | null;
+  radiographer_name?: string;
+  status: ExamStatus;
+  urgency: ExamUrgency;
+  interpretation_status: InterpretationStatus;
+  order_date: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ExamChecklist {
+  id: string;
+  exam_id: string;
+  overall_status: ChecklistOverallStatus;
+  pregnancy_risk?: ChecklistItemStatus;
+  mobility_status?: ChecklistItemStatus;
+  fasting_confirmed?: ChecklistItemStatus;
+  uses_contrast?: boolean;
+  contrast_consent_confirmed?: ChecklistItemStatus;
+  contrast_allergy?: ChecklistItemStatus;
+  kidney_function?: ChecklistItemStatus;
+  iv_access_confirmed?: ChecklistItemStatus;
+  pacemaker_or_electronics?: ChecklistItemStatus;
+  pacemaker_mr_status?: MRStatus;
+  metallic_implants?: ChecklistItemStatus;
+  implant_mr_status?: MRStatus;
+  clips_coils_stents?: ChecklistItemStatus;
+  clips_mr_status?: MRStatus;
+  internal_fixations?: ChecklistItemStatus;
+  foreign_metal_bodies?: ChecklistItemStatus;
+  removable_metals_hearing_aids?: ChecklistItemStatus;
+  claustrophobia?: ChecklistItemStatus;
+  or_carm_safety?: any;
+  us_protocol?: any;
+  us_preparation?: any;
+  checked_by?: string;
+  checked_at?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ExamQueryFilter {
+  modality?: string;
+  status?: string;
+  equipment_id?: string;
+  patient_id?: string;
+  date?: string;
+}

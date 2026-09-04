@@ -886,27 +886,44 @@ export default function Home() {
     );
   };
   const todayExams = exams.filter((exam) => exam.date === date);
-  const liveKpis = kpis.map((item) =>
-    item[0] === '오늘 검사'
-      ? [item[0], String(todayExams.length), item[2], item[3]]
-      : item[0] === '검사 대기'
-        ? [
-            item[0],
-            String(todayExams.filter((exam) => exam.status === '대기').length),
-            item[2],
-            item[3],
-          ]
-        : item[0] === '검사 완료'
-          ? [
-              item[0],
-              String(
-                todayExams.filter((exam) => exam.status === '완료').length,
-              ),
-              item[2],
-              item[3],
-            ]
-          : item,
-  );
+  const liveKpis = kpis.map((item) => {
+    if (item[0] === '오늘 검사') {
+      return [item[0], String(todayExams.length), item[2], item[3]];
+    }
+    if (item[0] === '검사 대기') {
+      return [
+        item[0],
+        String(todayExams.filter((exam) => exam.status === '대기').length),
+        item[2],
+        item[3],
+      ];
+    }
+    if (item[0] === '검사 중') {
+      return [
+        item[0],
+        String(todayExams.filter((exam) => exam.status === '검사중').length),
+        item[2],
+        item[3],
+      ];
+    }
+    if (item[0] === '검사 완료') {
+      return [
+        item[0],
+        String(todayExams.filter((exam) => exam.status === '완료').length),
+        item[2],
+        item[3],
+      ];
+    }
+    if (item[0] === '응급 검사') {
+      return [
+        item[0],
+        String(todayExams.filter((exam) => exam.urgent).length),
+        item[2],
+        item[3],
+      ];
+    }
+    return item;
+  });
 
   return (
     <main className="app-shell">
@@ -1582,7 +1599,7 @@ export default function Home() {
                     진행 Worklist{' '}
                     <span>
                       {
-                        exams.filter((exam) =>
+                        todayExams.filter((exam) =>
                           ['대기', '검사중'].includes(exam.status),
                         ).length
                       }
@@ -1595,7 +1612,7 @@ export default function Home() {
                     응급{' '}
                     <span>
                       {
-                        exams.filter(
+                        todayExams.filter(
                           (exam) =>
                             exam.urgent &&
                             ['대기', '검사중'].includes(exam.status),
@@ -1610,7 +1627,7 @@ export default function Home() {
                     미배정{' '}
                     <span>
                       {
-                        exams.filter(
+                        todayExams.filter(
                           (exam) =>
                             !exam.tech &&
                             ['대기', '검사중'].includes(exam.status),
@@ -1627,7 +1644,7 @@ export default function Home() {
                   >
                     완료 검사{' '}
                     <span>
-                      {exams.filter((exam) => exam.status === '완료').length}
+                      {todayExams.filter((exam) => exam.status === '완료').length}
                     </span>
                   </button>
                 </div>
@@ -1851,7 +1868,7 @@ export default function Home() {
                 )}
               </div>
               <div className="table-footer">
-                <span>검색 결과 {rows.length}건 · 전체 128건</span>
+                <span>검색 결과 {rows.length}건 · 전체 {todayExams.length}건</span>
               </div>
             </section>
             {active !== '검사 Worklist' && (
