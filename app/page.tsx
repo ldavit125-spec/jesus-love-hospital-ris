@@ -63,11 +63,11 @@ const DEVICE_TABS = [
   ['Portable X-ray', 'Portable X-ray'],
 ] as const;
 const kpis = [
-  ['오늘 검사', '128', '전일 대비 +12', 'blue'],
-  ['검사 대기', '24', '평균 대기 18분', 'amber'],
-  ['검사 중', '8', '장비 7대 가동 중', 'cyan'],
-  ['검사 완료', '91', '', 'green'],
-  ['응급 검사', '5', '즉시 확인 필요', 'red'],
+  ['오늘 검사', '-', '전일 대비 +12', 'blue'],
+  ['검사 대기', '-', '평균 대기 18분', 'amber'],
+  ['검사 중', '-', '장비 7대 가동 중', 'cyan'],
+  ['검사 완료', '-', '', 'green'],
+  ['응급 검사', '-', '즉시 확인 필요', 'red'],
 ];
 const calculateAge = (birthDate?: string, fallbackAge?: number): number => {
   if (!birthDate) return fallbackAge ?? 0;
@@ -1034,6 +1034,12 @@ export default function Home() {
   }, [active]);
   const todayExams = exams.filter((exam) => exam.date === date);
   const liveKpis = kpis.map((item) => {
+    if (worklistError) {
+      return [item[0], '오류', '데이터 조회 실패', item[3]];
+    }
+    if (isWorklistLoading && exams.length === 0) {
+      return [item[0], '-', item[2], item[3]];
+    }
     if (item[0] === '오늘 검사') {
       return [item[0], String(todayExams.length), item[2], item[3]];
     }
@@ -1790,6 +1796,21 @@ export default function Home() {
               최종 동기화 10:42:18
             </div>
           </div>
+          {worklistError && (
+            <div
+              className="patient-status-bar error"
+              style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <span>{worklistError}</span>
+              <button
+                type="button"
+                onClick={loadSupabaseWorklist}
+                disabled={isWorklistLoading}
+              >
+                {isWorklistLoading ? '재시도 중...' : '다시 시도'}
+              </button>
+            </div>
+          )}
           <section className="kpi-grid">
             {liveKpis.map((k) => (
               <article className={`kpi-card ${k[3]}`} key={k[0]}>
