@@ -183,6 +183,12 @@ export async function updateExamStatus(
       return { data: null, error: new Error(error.message) };
     }
 
+    if (!data) {
+      // Supabase update policy might not return row on select; re-fetch or construct updated object
+      const { data: refetched } = await getExamById(examId);
+      return { data: refetched || ({ ...currentExam, ...updatePayload } as Exam), error: null };
+    }
+
     return { data: (data as Exam) || null, error: null };
   } catch (error: any) {
     console.error(`[examService] updateExamStatus exception:`, error);

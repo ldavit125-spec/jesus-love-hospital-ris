@@ -36,6 +36,8 @@ import {
   calculateAgeFromBirthDate,
   type PatientWithCalculatedAge,
   getExams as getSupabaseExams,
+  startExam as startSupabaseExam,
+  completeExam as completeSupabaseExam,
 } from '@/lib/supabase/services';
 
 const navItems = [
@@ -393,6 +395,7 @@ export default function Home() {
   const [isSearchingPatient, setIsSearchingPatient] = useState(false);
   const [patientSearchError, setPatientSearchError] = useState<string | null>(null);
   const [isWorklistLoading, setIsWorklistLoading] = useState(true);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const [worklistError, setWorklistError] = useState<string | null>(null);
   const [reservationPatient, setReservationPatient] = useState('');
   const [reservationExam, setReservationExam] = useState('');
@@ -460,6 +463,46 @@ export default function Home() {
       setFirestoreStatus('fallback');
     } finally {
       setIsWorklistLoading(false);
+    }
+  };
+
+  const handleStartExam = async (examId: string) => {
+    setIsActionLoading(true);
+    try {
+      const res = await startSupabaseExam(examId);
+      if (res.error) {
+        setNotice(`[검사 시작 차단] ${res.error.message}`);
+        setTimeout(() => setNotice(''), 4000);
+      } else {
+        setNotice('검사가 시작되었습니다. (DB 상태: 검사중)');
+        setTimeout(() => setNotice(''), 3000);
+        await loadSupabaseWorklist();
+      }
+    } catch (err: any) {
+      setNotice(`[검사 시작 오류] ${err?.message || '알 수 없는 오류가 발생했습니다.'}`);
+      setTimeout(() => setNotice(''), 4000);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleCompleteExam = async (examId: string) => {
+    setIsActionLoading(true);
+    try {
+      const res = await completeSupabaseExam(examId);
+      if (res.error) {
+        setNotice(`[검사 완료 실패] ${res.error.message}`);
+        setTimeout(() => setNotice(''), 4000);
+      } else {
+        setNotice('검사가 완료되었습니다. 판독대기 상태로 등록되었습니다.');
+        setTimeout(() => setNotice(''), 3000);
+        await loadSupabaseWorklist();
+      }
+    } catch (err: any) {
+      setNotice(`[검사 완료 오류] ${err?.message || '알 수 없는 오류가 발생했습니다.'}`);
+      setTimeout(() => setNotice(''), 4000);
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -2545,7 +2588,7 @@ export default function Home() {
             <div className="drawer-actions">
               <button
                 className="action-start"
-                disabled={!canStartExam}
+                disabled={!canStartExam || isActionLoading}
                 title={
                   selected.status !== '대기'
                     ? `'대기' 상태인 검사만 시작할 수 있습니다. (현재: ${selected.status})`
@@ -2557,23 +2600,23 @@ export default function Home() {
                           ? `${selected.modality} 필수 안전 체크리스트 확인이 완료되지 않았습니다.`
                           : '검사를 시작합니다.'
                 }
-                onClick={() => updateExam(selected.id, { status: '검사중' })}
+                onClick={() => handleStartExam(selected.accession || selected.id)}
               >
                 <Play size={14} />
-                검사 시작
+                {isActionLoading ? '처리 중...' : '검사 시작'}
               </button>
               <button
                 className="action-complete"
-                disabled={!canCompleteExam}
+                disabled={!canCompleteExam || isActionLoading}
                 title={
                   selected.status !== '검사중'
                     ? `'검사중' 상태인 검사만 완료할 수 있습니다. (현재: ${selected.status})`
                     : '검사를 완료하고 판독대기 상태로 전환합니다.'
                 }
-                onClick={() => updateExam(selected.id, { status: '완료' })}
+                onClick={() => handleCompleteExam(selected.accession || selected.id)}
               >
                 <CheckCircle2 size={14} />
-                검사 완료
+                {isActionLoading ? '처리 중...' : '검사 완료'}
               </button>
             </div>
           </aside>
