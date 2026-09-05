@@ -65,7 +65,7 @@ const DEVICE_TABS = [
   ['Portable X-ray', 'Portable X-ray'],
 ] as const;
 const kpis = [
-  ['오늘 검사', '-', '전일 대비 +12', 'blue'],
+  ['선택일 검사', '-', '전일 대비 +12', 'blue'],
   ['검사 대기', '-', '평균 대기 18분', 'amber'],
   ['검사 중', '-', '장비 7대 가동 중', 'cyan'],
   ['검사 완료', '-', '', 'green'],
@@ -1083,7 +1083,7 @@ export default function Home() {
     if (isWorklistLoading && exams.length === 0) {
       return [item[0], '-', item[2], item[3]];
     }
-    if (item[0] === '오늘 검사') {
+    if (item[0] === '선택일 검사' || item[0] === '오늘 검사') {
       return [item[0], String(todayExams.length), item[2], item[3]];
     }
     if (item[0] === '검사 대기') {
