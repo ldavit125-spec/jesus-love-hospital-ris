@@ -22,8 +22,8 @@ export async function getExams(
   try {
     let query = supabase
       .from('exams')
-      .select('*')
-      .order('order_date', { ascending: false });
+      .select('*, patients(*)')
+      .order('order_date', { ascending: true });
 
     if (filters?.status && filters.status !== '전체' && filters.status !== '전체 상태') {
       query = query.eq('status', filters.status);

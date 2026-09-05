@@ -1,9 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const getEnv = (key: string): string => {
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.[key]) {
+    return (import.meta as any).env[key];
+  }
+  if (typeof process !== 'undefined' && process.env?.[key]) {
+    return process.env[key] || '';
+  }
+  return '';
+};
+
+const supabaseUrl =
+  getEnv('NEXT_PUBLIC_SUPABASE_URL') ||
+  getEnv('SUPABASE_URL') ||
+  '';
+
 const supabasePublishableKey =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  getEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') ||
+  getEnv('SUPABASE_PUBLISHABLE_KEY') ||
+  getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY') ||
+  getEnv('SUPABASE_ANON_KEY') ||
   '';
 
 // Security check: Ensure secret/service_role keys are NEVER exposed to browser

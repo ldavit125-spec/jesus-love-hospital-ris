@@ -35,6 +35,7 @@ import {
   searchPatients,
   calculateAgeFromBirthDate,
   type PatientWithCalculatedAge,
+  getExams as getSupabaseExams,
 } from '@/lib/supabase/services';
 
 const navItems = [
@@ -376,7 +377,7 @@ export default function Home() {
     [date, setDate] = useState('2026-08-29'),
     [modality, setModality] = useState('전체 Modality'),
     [examStatus, setExamStatus] = useState('전체 상태'),
-    [exams, setExams] = useState(initialWorklist),
+    [exams, setExams] = useState<Exam[]>([]),
     [selectedId, setSelectedId] = useState<string | null>(null),
     [notice, setNotice] = useState(''),
     [worklistView, setWorklistView] = useState<
@@ -391,6 +392,8 @@ export default function Home() {
   const [selectedSupabasePatient, setSelectedSupabasePatient] = useState<PatientWithCalculatedAge | null>(null);
   const [isSearchingPatient, setIsSearchingPatient] = useState(false);
   const [patientSearchError, setPatientSearchError] = useState<string | null>(null);
+  const [isWorklistLoading, setIsWorklistLoading] = useState(true);
+  const [worklistError, setWorklistError] = useState<string | null>(null);
   const [reservationPatient, setReservationPatient] = useState('');
   const [reservationExam, setReservationExam] = useState('');
   const [reservationRoom, setReservationRoom] = useState('X-ray 1');
@@ -400,51 +403,68 @@ export default function Home() {
     useState('전체 Modality');
   const [firestoreStatus, setFirestoreStatus] = useState<'checking' | 'connected' | 'fallback'>('checking');
 
-  useEffect(() => {
-    let isMounted = true;
-    async function loadData() {
-      if (!isFirebaseConfigured || !db) {
-        if (isMounted) setFirestoreStatus('fallback');
-        return;
+  const loadSupabaseWorklist = async () => {
+    setIsWorklistLoading(true);
+    setWorklistError(null);
+    try {
+      const res = await getSupabaseExams();
+      if (res.error) {
+        setWorklistError(`Worklist 조회 실패: ${res.error.message}`);
+        setExams([]);
+        setFirestoreStatus('fallback');
+      } else if (res.data) {
+        const mapped: Exam[] = res.data.map((item) => {
+          let dateStr = '2026-08-29';
+          let timeStr = '09:00';
+          if (item.order_date) {
+            const d = new Date(item.order_date);
+            if (!isNaN(d.getTime())) {
+              const kstDate = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+              dateStr = kstDate.toISOString().slice(0, 10);
+              timeStr = kstDate.toISOString().slice(11, 16);
+            }
+          }
+
+          const patient = item.patients;
+          const birthDate = patient?.birth_date || undefined;
+          const calculatedAge = birthDate ? calculateAgeFromBirthDate(birthDate) : 0;
+
+          return {
+            id: item.patient_id || item.id,
+            date: dateStr,
+            time: timeStr,
+            name: item.patient_name || patient?.name || '환자',
+            sex: (patient?.gender as string) || '남',
+            age: calculatedAge,
+            birthDate: birthDate,
+            phone: patient?.phone || undefined,
+            exam: item.exam_name,
+            modality: item.modality,
+            equipment: item.equipment_id || 'X-ray 1',
+            department: item.department || '',
+            tech: item.radiographer_name || '',
+            status: item.status,
+            urgent: item.urgency === '응급',
+            accession: item.id,
+            doctor: item.order_doctor || '',
+            memo: item.notes || '',
+          };
+        });
+        setExams(mapped);
+        setWorklistError(null);
+        setFirestoreStatus('connected');
       }
-      try {
-        const [firestoreExams, _firestorePatients] = await Promise.all([
-          getExams(),
-          getFirebasePatients(),
-        ]);
-        if (!isMounted) return;
-        if (firestoreExams && firestoreExams.length > 0) {
-          const mapped: Exam[] = firestoreExams.map((fe, idx) => ({
-            id: fe.patientId || `P-${idx + 1}`,
-            date: fe.orderDate ? fe.orderDate.split('T')[0] : '2026-08-29',
-            time: fe.orderDate && fe.orderDate.includes('T') ? fe.orderDate.split('T')[1].slice(0, 5) : '09:00',
-            name: fe.patientName || '환자',
-            sex: '남',
-            age: 50,
-            exam: fe.examName || '일반 검사',
-            modality: fe.modality || 'X-ray',
-            equipment: fe.equipmentId || 'X-ray 1',
-            department: fe.department || '내과',
-            tech: fe.radiographerName || '',
-            status: fe.status || '대기',
-            urgent: fe.urgency === '응급',
-            accession: fe.examId || `ACC-${fe.id || idx}`,
-            doctor: fe.orderDoctor || '',
-            memo: fe.notes || '',
-          }));
-          setExams(mapped);
-          setFirestoreStatus('connected');
-        } else {
-          setFirestoreStatus('fallback');
-        }
-      } catch (err) {
-        if (isMounted) setFirestoreStatus('fallback');
-      }
+    } catch (err: any) {
+      setWorklistError(`Worklist 조회 중 오류 발생: ${err?.message || '알 수 없는 오류'}`);
+      setExams([]);
+      setFirestoreStatus('fallback');
+    } finally {
+      setIsWorklistLoading(false);
     }
-    loadData();
-    return () => {
-      isMounted = false;
-    };
+  };
+
+  useEffect(() => {
+    loadSupabaseWorklist();
   }, []);
   const [reservationSelectedId, setReservationSelectedId] = useState<
     string | null
@@ -1971,6 +1991,21 @@ export default function Home() {
                   초기화
                 </button>
               </div>
+              {worklistError && (
+                <div
+                  className="patient-status-bar error"
+                  style={{ margin: '12px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                >
+                  <span>{worklistError}</span>
+                  <button
+                    type="button"
+                    onClick={loadSupabaseWorklist}
+                    disabled={isWorklistLoading}
+                  >
+                    {isWorklistLoading ? '재시도 중...' : '다시 시도'}
+                  </button>
+                </div>
+              )}
               <div className="table-wrap">
                 <table>
                   <thead>

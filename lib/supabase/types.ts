@@ -37,6 +37,7 @@ export interface Exam {
   notes?: string | null;
   created_at?: string;
   updated_at?: string;
+  patients?: Patient | null;
 }
 
 export interface ExamChecklist {
