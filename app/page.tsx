@@ -41,6 +41,10 @@ import {
   getExamChecklist,
   saveExamChecklist,
   type ExamChecklist,
+  getReports,
+  getReportByExam,
+  saveReport,
+  type InterpretationStatus,
 } from '@/lib/supabase/services';
 
 const navItems = [
@@ -110,6 +114,7 @@ type Exam = {
   memo: string;
   callStatus?: string;
   callTime?: string;
+  interpretationStatus?: InterpretationStatus | null;
 };
 const initialWorklist: Exam[] = [
   {
@@ -358,11 +363,11 @@ const techOptions = [
 ];
 function Status({ s }: { s: string }) {
   const t =
-    s === '완료'
+    s === '완료' || s === '판독완료'
       ? 'complete'
-      : s === '검사중'
+      : s === '검사중' || s === '판독중'
         ? 'progress'
-        : s === '대기'
+        : s === '대기' || s === '판독대기'
           ? 'waiting'
           : 'ready';
   return (
@@ -454,6 +459,7 @@ export default function Home() {
             accession: item.id,
             doctor: item.order_doctor || '',
             memo: item.notes || '',
+            interpretationStatus: item.interpretation_status,
           };
         });
         setExams(mapped);
@@ -521,6 +527,112 @@ export default function Home() {
   const [reportSelectedId, setReportSelectedId] = useState<string | null>(null);
   const [reportTexts, setReportTexts] = useState<Record<string, string>>({});
   const [reportRole] = useState<'전문의' | '방사선사'>('전문의');
+  const [isReportSaving, setIsReportSaving] = useState(false);
+  const [isReportLoading, setIsReportLoading] = useState(false);
+
+  // Supabase reports 테이블에서 전체 판독문 로드 및 동기화
+  const loadSupabaseReports = async () => {
+    setIsReportLoading(true);
+    try {
+      const res = await getReports();
+      if (res.data) {
+        const textMap: Record<string, string> = {};
+        res.data.forEach((r) => {
+          if (r.exam_id && r.findings) {
+            textMap[r.exam_id] = r.findings;
+          }
+        });
+        setReportTexts((prev) => ({ ...prev, ...textMap }));
+      }
+    } catch (err: any) {
+      console.error('[loadSupabaseReports] error:', err);
+    } finally {
+      setIsReportLoading(false);
+    }
+  };
+
+  // 특정 검사 선택 시 해당 검사의 최신 판독문 Supabase에서 단건 로드
+  const loadReportForExam = async (examId: string) => {
+    if (!examId) return;
+    const targetExam = exams.find((e) => e.id === examId);
+    const accession = targetExam?.accession || examId;
+    try {
+      const res = await getReportByExam(accession);
+      if (res.data?.findings) {
+        setReportTexts((prev) => ({
+          ...prev,
+          [accession]: res.data!.findings || '',
+          [examId]: res.data!.findings || '',
+        }));
+      } else if (accession !== examId) {
+        const res2 = await getReportByExam(examId);
+        if (res2.data?.findings) {
+          setReportTexts((prev) => ({
+            ...prev,
+            [accession]: res2.data!.findings || '',
+            [examId]: res2.data!.findings || '',
+          }));
+        }
+      }
+    } catch (err: any) {
+      console.error('[loadReportForExam] error:', err);
+    }
+  };
+
+  // 판독 완료/저장 처리 (Supabase reports 및 exams.interpretation_status 연동)
+  const handleSaveReport = async (examId: string, findingsText: string) => {
+    if (!examId) return;
+    if (reportRole !== '전문의') {
+      setNotice('방사선사는 판독문 저장 권한이 없습니다.');
+      setTimeout(() => setNotice(''), 3000);
+      return;
+    }
+    if (!findingsText.trim()) {
+      setNotice('판독문 내용을 입력해 주세요.');
+      setTimeout(() => setNotice(''), 3000);
+      return;
+    }
+
+    setIsReportSaving(true);
+    try {
+      const res = await saveReport({
+        examId,
+        findings: findingsText,
+        status: '판독완료',
+        radiologistName: '장태성', // 영상의학과 전문의
+      });
+
+      if (res.error) {
+        setNotice(`[판독 저장 실패] ${res.error.message}`);
+        setTimeout(() => setNotice(''), 4000);
+      } else {
+        setNotice('판독문이 성공적으로 저장 및 확정되었습니다.');
+        setTimeout(() => setNotice(''), 3000);
+        // Worklist 및 판독 상태 새로고침
+        await loadSupabaseWorklist();
+        await loadSupabaseReports();
+      }
+    } catch (err: any) {
+      setNotice(`[판독 저장 오류] ${err?.message || '알 수 없는 오류'}`);
+      setTimeout(() => setNotice(''), 4000);
+    } finally {
+      setIsReportSaving(false);
+    }
+  };
+
+  // 판독 관리 메뉴가 열릴 때 전체 reports 로드
+  useEffect(() => {
+    if (active === '판독 관리') {
+      loadSupabaseReports();
+    }
+  }, [active]);
+
+  // 판독 관리에서 특정 검사 선택 시 단건 로드
+  useEffect(() => {
+    if (active === '판독 관리' && reportSelectedId) {
+      loadReportForExam(reportSelectedId);
+    }
+  }, [active, reportSelectedId]);
   const [prepChecks, setPrepChecks] = useState<Record<string, string>>({});
   const [orFastingVerifications, setOrFastingVerifications] = useState<
     Record<
@@ -777,17 +889,18 @@ export default function Home() {
   );
   const todayReservationCount = reservationRows.length;
   const reportRows = exams.filter(
-    (exam) =>
-      exam.status === '완료' &&
-      (!reportQuery ||
-        exam.name.includes(reportQuery) ||
-        exam.id.includes(reportQuery)) &&
-      (reportModality === '전체 Modality' ||
-        exam.modality === reportModality) &&
-      (reportStatus === '전체 판독상태' ||
-        (reportStatus === '판독완료'
-          ? !!reportTexts[exam.id]
-          : !reportTexts[exam.id])),
+    (exam) => {
+      const currentInterp = exam.interpretationStatus || (reportTexts[exam.id] ? '판독완료' : '판독대기');
+      return (
+        exam.status === '완료' &&
+        (!reportQuery ||
+          exam.name.includes(reportQuery) ||
+          exam.id.includes(reportQuery)) &&
+        (reportModality === '전체 Modality' ||
+          exam.modality === reportModality) &&
+        (reportStatus === '전체 판독상태' || currentInterp === reportStatus)
+      );
+    }
   );
   const reportSelected =
     exams.find((exam) => exam.id === reportSelectedId) ?? null;
@@ -1867,27 +1980,30 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody>
-                    {reportRows.map((exam) => (
-                      <tr
-                        key={exam.id}
-                        onClick={() => setReportSelectedId(exam.id)}
-                      >
-                        <td>{exam.id}</td>
-                        <td>{exam.name}</td>
-                        <td>{exam.exam}</td>
-                        <td>{exam.modality}</td>
-                        <td>
-                          {exam.date} {exam.time}
-                        </td>
-                        <td>{exam.department}</td>
-                        <td>{exam.doctor}</td>
-                        <td>
-                          <Status
-                            s={reportTexts[exam.id] ? '판독완료' : '판독대기'}
-                          />
-                        </td>
-                      </tr>
-                    ))}
+                    {reportRows.map((exam) => {
+                      const examKey = exam.accession || exam.id;
+                      return (
+                        <tr
+                          key={exam.id}
+                          onClick={() => setReportSelectedId(exam.id)}
+                        >
+                          <td>{exam.id}</td>
+                          <td>{exam.name}</td>
+                          <td>{exam.exam}</td>
+                          <td>{exam.modality}</td>
+                          <td>
+                            {exam.date} {exam.time}
+                          </td>
+                          <td>{exam.department}</td>
+                          <td>{exam.doctor}</td>
+                          <td>
+                            <Status
+                              s={exam.interpretationStatus || (reportTexts[examKey] || reportTexts[exam.id] ? '판독완료' : '판독대기')}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1903,14 +2019,16 @@ export default function Home() {
                   </p>
                   <textarea
                     rows={8}
-                    disabled={reportRole !== '전문의'}
-                    value={reportTexts[reportSelected.id] ?? ''}
-                    onChange={(e) =>
+                    disabled={reportRole !== '전문의' || isReportSaving}
+                    value={reportTexts[reportSelected.accession || reportSelected.id] ?? reportTexts[reportSelected.id] ?? ''}
+                    onChange={(e) => {
+                      const targetKey = reportSelected.accession || reportSelected.id;
                       setReportTexts({
                         ...reportTexts,
+                        [targetKey]: e.target.value,
                         [reportSelected.id]: e.target.value,
-                      })
-                    }
+                      });
+                    }}
                     placeholder={
                       reportRole === '전문의'
                         ? '판독문을 작성하세요.'
@@ -1919,10 +2037,10 @@ export default function Home() {
                   />
                   <button
                     className="register-order"
-                    disabled={reportRole !== '전문의'}
-                    onClick={() => setNotice('판독문이 저장되었습니다.')}
+                    disabled={reportRole !== '전문의' || isReportSaving}
+                    onClick={() => handleSaveReport(reportSelected.accession || reportSelected.id, reportTexts[reportSelected.accession || reportSelected.id] ?? reportTexts[reportSelected.id] ?? '')}
                   >
-                    판독 완료
+                    {isReportSaving ? '판독 저장 중...' : '판독 완료'}
                   </button>
                 </div>
               )}
