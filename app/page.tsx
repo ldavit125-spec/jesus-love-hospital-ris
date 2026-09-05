@@ -38,6 +38,9 @@ import {
   getExams as getSupabaseExams,
   startExam as startSupabaseExam,
   completeExam as completeSupabaseExam,
+  getExamChecklist,
+  saveExamChecklist,
+  type ExamChecklist,
 } from '@/lib/supabase/services';
 
 const navItems = [
@@ -530,6 +533,221 @@ export default function Home() {
       }
     >
   >({});
+  const [isChecklistSaving, setIsChecklistSaving] = useState(false);
+  const [isChecklistLoading, setIsChecklistLoading] = useState(false);
+
+  // Supabase exam_checklists DB에서 해당 검사의 체크리스트 조회
+  const loadChecklistForExam = async (examAccession: string, patientId: string) => {
+    if (!examAccession) return;
+    setIsChecklistLoading(true);
+    try {
+      const res = await getExamChecklist(examAccession);
+      if (res.data) {
+        const d = res.data;
+        const newChecks: Record<string, string> = {};
+
+        // CT 항목 매핑
+        if (d.uses_contrast !== undefined) {
+          newChecks[`${patientId}-조영제 사용 여부`] = d.uses_contrast ? '확인 완료' : '해당 없음';
+        }
+        if (d.contrast_allergy) newChecks[`${patientId}-조영제 알레르기 여부`] = d.contrast_allergy;
+        if (d.kidney_function) newChecks[`${patientId}-신장기능 확인`] = d.kidney_function;
+        if (d.fasting_confirmed) newChecks[`${patientId}-금식 여부`] = d.fasting_confirmed;
+        if (d.iv_access_confirmed) newChecks[`${patientId}-정맥주사(IV) 확보 여부`] = d.iv_access_confirmed;
+        if (d.pregnancy_risk) newChecks[`${patientId}-임신 가능성`] = d.pregnancy_risk;
+        if (d.mobility_status) newChecks[`${patientId}-휠체어 / 보행보조 여부`] = d.mobility_status;
+
+        // MRI 항목 매핑
+        if (d.contrast_allergy || d.kidney_function) {
+          newChecks[`${patientId}-조영제 알레르기 및 신장기능 확인`] =
+            d.contrast_allergy === '확인 완료' && d.kidney_function === '확인 완료' ? '확인 완료' : (d.contrast_allergy || '추가 확인 필요');
+        }
+        if (d.pacemaker_or_electronics) newChecks[`${patientId}-심박동기 등 체내 전자기기`] = d.pacemaker_or_electronics;
+        if (d.metallic_implants) newChecks[`${patientId}-인공관절 / 금속 임플란트`] = d.metallic_implants;
+        if (d.clips_coils_stents) newChecks[`${patientId}-수술용 클립 / 코일 / 스텐트`] = d.clips_coils_stents;
+        if (d.internal_fixations) newChecks[`${patientId}-체내 금속성 고정물`] = d.internal_fixations;
+        if (d.foreign_metal_bodies) newChecks[`${patientId}-금속성 이물질 여부`] = d.foreign_metal_bodies;
+        if (d.removable_metals_hearing_aids) newChecks[`${patientId}-보청기 등 제거 필요 물품`] = d.removable_metals_hearing_aids;
+        if (d.mobility_status) newChecks[`${patientId}-휠체어 / 이동 보조 필요 여부`] = d.mobility_status;
+        if (d.claustrophobia) newChecks[`${patientId}-폐쇄공포증 여부`] = d.claustrophobia;
+
+        // C-arm 항목 매핑
+        if (d.or_carm_safety?.fastingStatus) {
+          newChecks[`${patientId}-수술 전 금식 상태 확인`] = d.or_carm_safety.fastingStatus;
+          if (d.or_carm_safety.medicalStaffVerification) {
+            setOrFastingVerifications((prev) => ({
+              ...prev,
+              [patientId]: {
+                verifiedDoctor: d.or_carm_safety.medicalStaffVerification.verifiedDoctor || '',
+                departmentOrRole: d.or_carm_safety.medicalStaffVerification.departmentOrRole || '마취통증의학과',
+                clinicalReason: d.or_carm_safety.medicalStaffVerification.clinicalReason || '',
+                isEmergencySurgery: !!d.or_carm_safety.medicalStaffVerification.isEmergencySurgery,
+              },
+            }));
+          }
+        }
+
+        // 초음파(US) 항목 매핑
+        if (d.us_preparation?.fastingConfirmed) {
+          newChecks[`${patientId}-금식 상태 확인 (6~8시간)`] = d.us_preparation.fastingConfirmed;
+        }
+        if (d.us_preparation?.fullBladderConfirmed) {
+          newChecks[`${patientId}-방광 충만 확인 (소변 참기)`] = d.us_preparation.fullBladderConfirmed;
+        }
+
+        setPrepChecks((prev) => ({ ...prev, ...newChecks }));
+      }
+    } catch (err: any) {
+      console.error('[loadChecklistForExam] error:', err);
+    } finally {
+      setIsChecklistLoading(false);
+    }
+  };
+
+  // 체크리스트 저장 (Supabase INSERT 또는 UPDATE)
+  const saveChecklistForExam = async (
+    targetExam: Exam,
+    updatedChecks: Record<string, string>,
+    updatedOrFasting?: {
+      verifiedDoctor: string;
+      departmentOrRole: string;
+      clinicalReason: string;
+      isEmergencySurgery: boolean;
+    }
+  ) => {
+    const accession = targetExam.accession || targetExam.id;
+    if (!accession) return;
+
+    setIsChecklistSaving(true);
+    try {
+      const pid = targetExam.id;
+      const m = targetExam.modality;
+      const isOr =
+        m === 'C-arm' &&
+        (targetExam.equipment?.includes('수술실') || targetExam.equipment === 'C-arm · 수술실');
+      const isUltrasound = m === 'US' || m === 'Ultrasound';
+
+      const payload: Partial<ExamChecklist> & { exam_id: string; overall_status: any } = {
+        exam_id: accession,
+        overall_status: '확인 필요',
+        checked_by: targetExam.tech || '담당 방사선사',
+      };
+
+      if (m === 'CT') {
+        const usesContrastVal = updatedChecks[`${pid}-조영제 사용 여부`];
+        payload.uses_contrast = usesContrastVal === '확인 완료';
+        payload.contrast_consent_confirmed = (updatedChecks[`${pid}-조영제 사용 여부`] as any) || '미확인';
+        payload.contrast_allergy = (updatedChecks[`${pid}-조영제 알레르기 여부`] as any) || '미확인';
+        payload.kidney_function = (updatedChecks[`${pid}-신장기능 확인`] as any) || '미확인';
+        payload.fasting_confirmed = (updatedChecks[`${pid}-금식 여부`] as any) || '미확인';
+        payload.iv_access_confirmed = (updatedChecks[`${pid}-정맥주사(IV) 확보 여부`] as any) || '미확인';
+        payload.pregnancy_risk = (updatedChecks[`${pid}-임신 가능성`] as any) || '미확인';
+        payload.mobility_status = (updatedChecks[`${pid}-휠체어 / 보행보조 여부`] as any) || '미확인';
+
+        const isCTComplete =
+          payload.pregnancy_risk === '확인 완료' &&
+          payload.mobility_status === '확인 완료' &&
+          (!payload.uses_contrast ||
+            (payload.contrast_allergy === '확인 완료' &&
+              payload.kidney_function === '확인 완료' &&
+              payload.fasting_confirmed === '확인 완료' &&
+              payload.iv_access_confirmed === '확인 완료'));
+        payload.overall_status = isCTComplete ? '검사 가능' : '확인 필요';
+      } else if (m === 'MRI') {
+        payload.pregnancy_risk = (updatedChecks[`${pid}-임신 가능성`] as any) || '미확인';
+        payload.pacemaker_or_electronics = (updatedChecks[`${pid}-심박동기 등 체내 전자기기`] as any) || '미확인';
+        payload.pacemaker_mr_status =
+          payload.pacemaker_or_electronics === '해당 없음'
+            ? 'MR Safe'
+            : payload.pacemaker_or_electronics === '확인 완료'
+              ? 'MR Conditional'
+              : '미확인';
+        payload.metallic_implants = (updatedChecks[`${pid}-인공관절 / 금속 임플란트`] as any) || '미확인';
+        payload.implant_mr_status =
+          payload.metallic_implants === '해당 없음'
+            ? 'MR Safe'
+            : payload.metallic_implants === '확인 완료'
+              ? 'MR Conditional'
+              : '미확인';
+        payload.clips_coils_stents = (updatedChecks[`${pid}-수술용 클립 / 코일 / 스텐트`] as any) || '미확인';
+        payload.clips_mr_status =
+          payload.clips_coils_stents === '해당 없음'
+            ? 'MR Safe'
+            : payload.clips_coils_stents === '확인 완료'
+              ? 'MR Conditional'
+              : '미확인';
+        payload.internal_fixations = (updatedChecks[`${pid}-체내 금속성 고정물`] as any) || '미확인';
+        payload.foreign_metal_bodies = (updatedChecks[`${pid}-금속성 이물질 여부`] as any) || '미확인';
+        payload.removable_metals_hearing_aids = (updatedChecks[`${pid}-보청기 등 제거 필요 물품`] as any) || '미확인';
+        payload.mobility_status = (updatedChecks[`${pid}-휠체어 / 이동 보조 필요 여부`] as any) || '미확인';
+        payload.claustrophobia = (updatedChecks[`${pid}-폐쇄공포증 여부`] as any) || '미확인';
+
+        const mriCleared =
+          (payload.pregnancy_risk === '확인 완료' || payload.pregnancy_risk === '해당 없음') &&
+          (payload.pacemaker_or_electronics === '확인 완료' || payload.pacemaker_or_electronics === '해당 없음') &&
+          (payload.metallic_implants === '확인 완료' || payload.metallic_implants === '해당 없음') &&
+          (payload.clips_coils_stents === '확인 완료' || payload.clips_coils_stents === '해당 없음') &&
+          (payload.foreign_metal_bodies === '확인 완료' || payload.foreign_metal_bodies === '해당 없음') &&
+          (payload.removable_metals_hearing_aids === '확인 완료' || payload.removable_metals_hearing_aids === '해당 없음') &&
+          (payload.claustrophobia === '확인 완료' || payload.claustrophobia === '해당 없음');
+        payload.overall_status = mriCleared ? '검사 가능' : '확인 필요';
+      } else if (isOr) {
+        const fStatus = updatedChecks[`${pid}-수술 전 금식 상태 확인`] || '미확인';
+        const orVerif = updatedOrFasting || orFastingVerifications[pid];
+        payload.or_carm_safety = {
+          fastingStatus: fStatus,
+          medicalStaffVerification: orVerif || null,
+        };
+        const orCarmOk =
+          fStatus === '확인 완료' ||
+          (fStatus === '해당 없음/의료진 확인' &&
+            Boolean(orVerif?.verifiedDoctor?.trim() && orVerif?.clinicalReason?.trim()));
+        payload.overall_status = orCarmOk ? '검사 가능' : '확인 필요';
+      } else if (isUltrasound) {
+        const fastingVal = updatedChecks[`${pid}-금식 상태 확인 (6~8시간)`] || '미확인';
+        const bladderVal = updatedChecks[`${pid}-방광 충만 확인 (소변 참기)`] || '미확인';
+        payload.us_protocol = {
+          requiresFasting:
+            targetExam.exam?.includes('Abdomen') ||
+            targetExam.exam?.includes('복부') ||
+            targetExam.exam?.includes('Liver') ||
+            targetExam.exam?.includes('간'),
+          requiresFullBladder:
+            targetExam.exam?.includes('Pelvis') ||
+            targetExam.exam?.includes('골반') ||
+            targetExam.exam?.includes('Bladder') ||
+            targetExam.exam?.includes('방광') ||
+            targetExam.exam?.includes('비뇨'),
+        };
+        payload.us_preparation = {
+          fastingConfirmed: fastingVal,
+          fullBladderConfirmed: bladderVal,
+        };
+        const usOk =
+          (!payload.us_protocol.requiresFasting || fastingVal === '확인 완료' || fastingVal === '해당 없음') &&
+          (!payload.us_protocol.requiresFullBladder || bladderVal === '확인 완료' || bladderVal === '해당 없음');
+        payload.overall_status = usOk ? '검사 가능' : '확인 필요';
+      } else {
+        payload.overall_status = '검사 가능';
+      }
+
+      await saveExamChecklist(payload);
+    } catch (err: any) {
+      console.error('[saveChecklistForExam] error:', err);
+    } finally {
+      setIsChecklistSaving(false);
+    }
+  };
+
+  const selected = exams.find((exam) => exam.id === selectedId) ?? null;
+
+  // 검사 상세 드로어 열릴 때 Supabase exam_checklists에서 체크리스트 로드
+  useEffect(() => {
+    if (selectedId && selected?.accession) {
+      loadChecklistForExam(selected.accession, selected.id);
+    }
+  }, [selectedId, selected?.accession]);
+
   const [assignDate, setAssignDate] = useState('2026-08-29');
   const [assignShift, setAssignShift] = useState('주간');
   const [assignTechName, setAssignTechName] = useState('');
@@ -539,7 +757,6 @@ export default function Home() {
   const [systemSettings, setSystemSettings] = useState({ hospital: '예수사랑병원', ris: '예수사랑병원 RIS', ttsRate: '0.9', ttsPitch: '1.0', defaultStatus: '대기', alerts: true });
   const [equipmentStatuses, setEquipmentStatuses] = useState<Record<string, string>>({});
   const equipmentStatusOptions = ['정상', '사용중', '점검예정', '점검중', '고장', '사용중지'];
-  const selected = exams.find((exam) => exam.id === selectedId) ?? null;
   const reservationSlots = ['09:00', '09:30', '10:00', '10:30', '11:00'];
   const reservationConflict = exams.some(
     (exam) =>
@@ -2330,7 +2547,14 @@ export default function Home() {
             </section>
             {(selected.modality === 'CT' || selected.modality === 'MRI' || isOrCarm || (isUS && prepItems.length > 0)) && (
               <section className="drawer-section">
-                <h5>{isOrCarm ? '수술 전 안전 확인사항' : isUS ? '초음파 사전 준비사항' : '검사 전 확인사항'}</h5>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <h5 style={{ margin: 0 }}>{isOrCarm ? '수술 전 안전 확인사항' : isUS ? '초음파 사전 준비사항' : '검사 전 확인사항'}</h5>
+                  {isChecklistSaving ? (
+                    <small style={{ color: '#2563eb', fontWeight: 500 }}>DB 저장 중...</small>
+                  ) : isChecklistLoading ? (
+                    <small style={{ color: '#64748b', fontWeight: 500 }}>DB 동기화 중...</small>
+                  ) : null}
+                </div>
                 <strong
                   className={prepComplete ? 'status-ok' : 'status-warning'}
                 >
@@ -2349,12 +2573,15 @@ export default function Home() {
                           <span>{item}</span>
                           <select
                             value={currentVal}
-                            onChange={(e) =>
-                              setPrepChecks({
+                            onChange={(e) => {
+                              const newVal = e.target.value;
+                              const updated = {
                                 ...prepChecks,
-                                [`${selected.id}-${item}`]: e.target.value,
-                              })
-                            }
+                                [`${selected.id}-${item}`]: newVal,
+                              };
+                              setPrepChecks(updated);
+                              saveChecklistForExam(selected, updated);
+                            }}
                           >
                             <option>확인 완료</option>
                             {isOrCarm ? (
@@ -2397,17 +2624,19 @@ export default function Home() {
                                   type="text"
                                   placeholder="예: 김마취 과장"
                                   value={orFastingVerifications[selected.id]?.verifiedDoctor ?? ''}
-                                  onChange={(e) =>
+                                  onChange={(e) => {
+                                    const updatedVerif = {
+                                      verifiedDoctor: e.target.value,
+                                      departmentOrRole: orFastingVerifications[selected.id]?.departmentOrRole ?? '마취통증의학과',
+                                      clinicalReason: orFastingVerifications[selected.id]?.clinicalReason ?? '',
+                                      isEmergencySurgery: selected.urgent || orFastingVerifications[selected.id]?.isEmergencySurgery || false,
+                                    };
                                     setOrFastingVerifications({
                                       ...orFastingVerifications,
-                                      [selected.id]: {
-                                        verifiedDoctor: e.target.value,
-                                        departmentOrRole: orFastingVerifications[selected.id]?.departmentOrRole ?? '마취통증의학과',
-                                        clinicalReason: orFastingVerifications[selected.id]?.clinicalReason ?? '',
-                                        isEmergencySurgery: selected.urgent || orFastingVerifications[selected.id]?.isEmergencySurgery || false,
-                                      },
-                                    })
-                                  }
+                                      [selected.id]: updatedVerif,
+                                    });
+                                    saveChecklistForExam(selected, prepChecks, updatedVerif);
+                                  }}
                                   style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '6px 8px', fontSize: '12px' }}
                                 />
                               </label>
@@ -2417,17 +2646,19 @@ export default function Home() {
                                   type="text"
                                   placeholder="마취통증의학과 / 집도의"
                                   value={orFastingVerifications[selected.id]?.departmentOrRole ?? '마취통증의학과'}
-                                  onChange={(e) =>
+                                  onChange={(e) => {
+                                    const updatedVerif = {
+                                      verifiedDoctor: orFastingVerifications[selected.id]?.verifiedDoctor ?? '',
+                                      departmentOrRole: e.target.value,
+                                      clinicalReason: orFastingVerifications[selected.id]?.clinicalReason ?? '',
+                                      isEmergencySurgery: selected.urgent || orFastingVerifications[selected.id]?.isEmergencySurgery || false,
+                                    };
                                     setOrFastingVerifications({
                                       ...orFastingVerifications,
-                                      [selected.id]: {
-                                        verifiedDoctor: orFastingVerifications[selected.id]?.verifiedDoctor ?? '',
-                                        departmentOrRole: e.target.value,
-                                        clinicalReason: orFastingVerifications[selected.id]?.clinicalReason ?? '',
-                                        isEmergencySurgery: selected.urgent || orFastingVerifications[selected.id]?.isEmergencySurgery || false,
-                                      },
-                                    })
-                                  }
+                                      [selected.id]: updatedVerif,
+                                    });
+                                    saveChecklistForExam(selected, prepChecks, updatedVerif);
+                                  }}
                                   style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '6px 8px', fontSize: '12px' }}
                                 />
                               </label>
@@ -2438,17 +2669,19 @@ export default function Home() {
                                 type="text"
                                 placeholder="예: 응급수술로 마취과 사전평가 및 흡인 방지 처치 완료 후 진행"
                                 value={orFastingVerifications[selected.id]?.clinicalReason ?? ''}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                  const updatedVerif = {
+                                    verifiedDoctor: orFastingVerifications[selected.id]?.verifiedDoctor ?? '',
+                                    departmentOrRole: orFastingVerifications[selected.id]?.departmentOrRole ?? '마취통증의학과',
+                                    clinicalReason: e.target.value,
+                                    isEmergencySurgery: selected.urgent || orFastingVerifications[selected.id]?.isEmergencySurgery || false,
+                                  };
                                   setOrFastingVerifications({
                                     ...orFastingVerifications,
-                                    [selected.id]: {
-                                      verifiedDoctor: orFastingVerifications[selected.id]?.verifiedDoctor ?? '',
-                                      departmentOrRole: orFastingVerifications[selected.id]?.departmentOrRole ?? '마취통증의학과',
-                                      clinicalReason: e.target.value,
-                                      isEmergencySurgery: selected.urgent || orFastingVerifications[selected.id]?.isEmergencySurgery || false,
-                                    },
-                                  })
-                                }
+                                    [selected.id]: updatedVerif,
+                                  });
+                                  saveChecklistForExam(selected, prepChecks, updatedVerif);
+                                }}
                                 style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '6px 8px', fontSize: '12px' }}
                               />
                             </label>

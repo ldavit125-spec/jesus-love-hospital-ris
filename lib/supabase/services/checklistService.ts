@@ -62,18 +62,39 @@ export async function saveExamChecklist(
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
+    // 기존 데이터 존재 여부 확인
+    const { data: existing } = await supabase
       .from('exam_checklists')
-      .upsert(payload, { onConflict: 'exam_id' })
-      .select()
+      .select('id')
+      .eq('exam_id', checklist.exam_id)
       .maybeSingle();
 
-    if (error) {
-      console.error(`[checklistService] saveExamChecklist error:`, error.message);
-      return { data: null, error: new Error(error.message) };
-    }
+    if (existing?.id) {
+      const { data, error } = await supabase
+        .from('exam_checklists')
+        .update(payload)
+        .eq('id', existing.id)
+        .select()
+        .maybeSingle();
 
-    return { data: (data as ExamChecklist) || null, error: null };
+      if (error) {
+        console.error(`[checklistService] updateExamChecklist error:`, error.message);
+        return { data: null, error: new Error(error.message) };
+      }
+      return { data: (data as ExamChecklist) || null, error: null };
+    } else {
+      const { data, error } = await supabase
+        .from('exam_checklists')
+        .insert(payload)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error(`[checklistService] insertExamChecklist error:`, error.message);
+        return { data: null, error: new Error(error.message) };
+      }
+      return { data: (data as ExamChecklist) || null, error: null };
+    }
   } catch (error: any) {
     console.error(`[checklistService] saveExamChecklist exception:`, error);
     return { data: null, error: new Error(error?.message || '체크리스트 저장 중 예외가 발생했습니다.') };
