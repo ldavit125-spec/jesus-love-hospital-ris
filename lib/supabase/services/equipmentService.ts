@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../client';
-import { Equipment } from '../types';
+import { Equipment, EquipmentStatus } from '../types';
 
 // 예수사랑병원 RIS 확정 10대 장비 ID 마스터
 export const CANONICAL_EQUIPMENT_IDS = [
@@ -15,7 +15,16 @@ export const CANONICAL_EQUIPMENT_IDS = [
   'Portable X-ray',
 ] as const;
 
-// 검사 배정/시작 불가 장비 상태 정의
+// 예수사랑병원 RIS 표준 5대 장비 상태 목록
+export const EQUIPMENT_STATUS_LIST: readonly EquipmentStatus[] = [
+  '사용가능',
+  '사용중',
+  '점검중',
+  '고장',
+  '사용중지',
+] as const;
+
+// 검사 배정/시작 불가 장비 상태 정의 (고장, 점검중, 사용중지)
 export const NON_OPERATIONAL_STATUSES = ['고장', '점검중', '사용중지'] as const;
 
 /**
@@ -111,11 +120,11 @@ export async function getEquipmentById(
 }
 
 /**
- * 장비 운영 상태 변경 (정상, 점검예정, 사용중, 고장, 점검중, 사용중지 등)
+ * 장비 운영 상태 변경 (사용가능, 사용중, 점검중, 고장, 사용중지)
  */
 export async function updateEquipmentStatus(
   id: string,
-  status: string
+  status: EquipmentStatus | string
 ): Promise<{ data: Equipment | null; error: Error | null }> {
   if (!id || !status) {
     return { data: null, error: new Error('장비 ID 및 변경할 상태가 유효하지 않습니다.') };
@@ -147,3 +156,34 @@ export async function updateEquipmentStatus(
     return { data: null, error: new Error(error?.message || '장비 상태 변경 중 예외가 발생했습니다.') };
   }
 }
+
+/**
+ * 전체 장비 점검 이력 조회
+ */
+export async function getEquipmentInspections(): Promise<{
+  data: any[] | null;
+  error: Error | null;
+}> {
+  if (!isSupabaseConfigured || !supabase) {
+    const err = new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+    return { data: null, error: err };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('equipment_inspections')
+      .select('*')
+      .order('inspection_date', { ascending: false });
+
+    if (error) {
+      console.error('[equipmentService] getEquipmentInspections error:', error.message);
+      return { data: null, error: new Error(error.message) };
+    }
+
+    return { data: data || [], error: null };
+  } catch (error: any) {
+    console.error('[equipmentService] unexpected error in getEquipmentInspections:', error);
+    return { data: null, error: new Error(error?.message || '장비 점검 이력 조회 중 오류가 발생했습니다.') };
+  }
+}
+

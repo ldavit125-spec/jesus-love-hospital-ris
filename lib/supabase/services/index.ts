@@ -3,4 +3,7 @@ export * from './examService';
 export * from './equipmentService';
 export * from './checklistService';
 export * from './reportService';
+export * from './reservationService';
+export * from './staffService';
 export * from './authService';
+export * from './settingService';

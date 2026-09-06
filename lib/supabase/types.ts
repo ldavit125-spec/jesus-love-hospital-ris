@@ -6,6 +6,21 @@ export type InterpretationStatus = '판독대기' | '판독중' | '판독완료'
 export type ChecklistOverallStatus = '검사 가능' | '확인 필요' | '검사 보류';
 export type ChecklistItemStatus = '확인 완료' | '미확인' | '해당 없음' | '추가 확인 필요';
 export type MRStatus = 'MR Safe' | 'MR Conditional' | 'MR Unsafe' | '미확인';
+export type EquipmentStatus =
+  | '사용가능'
+  | '사용중'
+  | '점검중'
+  | '고장'
+  | '사용중지';
+
+export type AppRole = 'rt' | 'radiologist' | 'admin';
+
+export interface Profile {
+  id: string;
+  name: string;
+  role: AppRole;
+  created_at?: string;
+}
 
 export interface Patient {
   id: string;
@@ -94,7 +109,11 @@ export interface Staff {
 
 export interface WorkSchedule {
   id: string;
+  staff_id?: string | null;
+  schedule_date?: string | null;
+  shift_type?: string | null;
   equipment_id?: string | null;
+  status?: string | null;
   created_at?: string;
 }
 
@@ -103,7 +122,7 @@ export interface Equipment {
   name: string;
   modality: string;
   room_name?: string | null;
-  status: string;
+  status: EquipmentStatus | string;
   created_at?: string;
   updated_at?: string;
 }

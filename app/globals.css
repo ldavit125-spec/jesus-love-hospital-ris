@@ -1822,3 +1822,814 @@ tbody tr {
   margin: 4px 0 0;
   width: 100%;
 }
+
+.schedule-table select,
+.schedule-table input {
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid #d1d9e2;
+  border-radius: 4px;
+  background: #fff;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.schedule-table select:focus,
+.schedule-table input:focus {
+  border-color: #1d63d8;
+  box-shadow: 0 0 0 2px rgba(29, 99, 216, 0.12);
+}
+
+.schedule-table select:disabled,
+.schedule-table input:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.schedule-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.schedule-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 5px;
+  background: #1f5ca7;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.schedule-save-btn:hover {
+  background: #174b88;
+}
+
+.schedule-save-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.detail-box {
+  margin: 0 24px 20px;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.detail-box strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.detail-box p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #475569;
+}
+
+.detail-box button {
+  margin-top: 10px;
+  padding: 6px 14px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.detail-box button:hover {
+  background: #f1f5f9;
+}
+
+.inspection-history-table {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.inspection-history-table th {
+  background: #f1f5f9;
+  color: #475569;
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.inspection-history-table td {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.equipment-status-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.equipment-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.equipment-status-ctrl select {
+  font-size: 13px;
+  padding: 4px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  color: #1e293b;
+  outline: none;
+}
+
+.equipment-save-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #1d63d8;
+  background: #1d63d8;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s;
+}
+
+.equipment-save-btn:hover {
+  background: #174ea6;
+}
+
+.equipment-save-btn:disabled {
+  background: #94a3b8;
+  border-color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Auth / Role Switcher Modal Styles */
+.profile {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 3px 6px;
+  transition: background 0.15s ease;
+}
+.profile:hover {
+  background: #f1f5f9;
+}
+
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.auth-modal-card {
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: authModalFadeIn 0.2s ease-out;
+}
+
+@keyframes authModalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.auth-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.auth-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.auth-modal-header button {
+  background: transparent;
+  border: 0;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+.auth-modal-header button:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.auth-current-profile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 22px;
+  padding: 14px 18px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+.auth-avatar-large {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.auth-current-info {
+  flex: 1;
+}
+
+.auth-current-info strong {
+  display: block;
+  font-size: 15px;
+  color: #1e293b;
+}
+
+.auth-current-info span {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.auth-role-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.auth-role-tag.radiographer {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.auth-role-tag.radiologist {
+  background: #fef3c7;
+  color: #b45309;
+}
+.auth-role-tag.admin {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.auth-role-list {
+  padding: 0 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-role-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.auth-role-item:hover {
+  border-color: #3b82f6;
+  background: #f8fafc;
+}
+
+.auth-role-item.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+.auth-role-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-role-item-info strong {
+  display: block;
+  font-size: 13.5px;
+  color: #1e293b;
+}
+
+.auth-role-item-info small {
+  display: block;
+  font-size: 11.5px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.auth-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.auth-signout-btn {
+  padding: 7px 14px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+.profile:hover {
+  background: #f1f5f9;
+}
+
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.auth-modal-card {
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: authModalFadeIn 0.2s ease-out;
+}
+
+@keyframes authModalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.auth-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.auth-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.auth-modal-header button {
+  background: transparent;
+  border: 0;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+.auth-modal-header button:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.auth-current-profile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 22px;
+  padding: 14px 18px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+.auth-avatar-large {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.auth-current-info {
+  flex: 1;
+}
+
+.auth-current-info strong {
+  display: block;
+  font-size: 15px;
+  color: #1e293b;
+}
+
+.auth-current-info span {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.auth-role-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.auth-role-tag.radiographer {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.auth-role-tag.radiologist {
+  background: #fef3c7;
+  color: #b45309;
+}
+.auth-role-tag.admin {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.auth-role-list {
+  padding: 0 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-role-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.auth-role-item:hover {
+  border-color: #3b82f6;
+  background: #f8fafc;
+}
+
+.auth-role-item.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+.auth-role-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-role-item-info strong {
+  display: block;
+  font-size: 13.5px;
+  color: #1e293b;
+}
+
+.auth-role-item-info small {
+  display: block;
+  font-size: 11.5px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.auth-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.auth-signout-btn {
+  padding: 7px 14px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.auth-signout-btn:hover {
+  background: #fee2e2;
+  border-foreground: #fca5a5;
+  color: #b91c1c;
+}
+
+.auth-close-btn {
+  padding: 7px 16px;
+  background: #2563eb;
+  border: 0;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.auth-close-btn:hover {
+  background: #1d4ed8;
+}
+
+/* ==========================================================================
+   RIS Hospital Login Screen
+   ========================================================================== */
+.login-screen-wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: linear-gradient(135deg, #0b1e36 0%, #17375e 50%, #1e4577 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  font-family: inherit;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 25px 50px -12px rgba(11, 30, 54, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  animation: loginCardFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes loginCardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.login-card-header {
+  padding: 36px 32px 24px;
+  text-align: center;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  border-bottom: 1px solid #edf2f7;
+}
+
+.login-logo-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  margin-bottom: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+.login-logo-wrap img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.login-card-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px;
+  letter-spacing: -0.3px;
+}
+
+.login-card-header p {
+  font-size: 13px;
+  color: #2563eb;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.login-system-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.login-form {
+  padding: 28px 32px 32px;
+}
+
+.login-field {
+  margin-bottom: 18px;
+}
+
+.login-field label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.login-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-input-wrap input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.login-input-wrap input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.login-input-wrap input:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.login-toggle-pw {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.login-toggle-pw:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.login-error-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #b91c1c;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 18px;
+  line-height: 1.4;
+}
+
+.login-submit-btn {
+  width: 100%;
+  height: 46px;
+  background: #1e4577;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(30, 69, 119, 0.2);
+}
+
+.login-submit-btn:hover:not(:disabled) {
+  background: #17375e;
+}
+
+.login-submit-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.login-demo-notice {
+  margin-top: 22px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px dashed #cbd5e1;
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.login-demo-notice strong {
+  display: block;
+  color: #1e4577;
+  margin-bottom: 2px;
+}
+
+.login-footer-security {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin-top: 18px;
+  text-align: center;
+}

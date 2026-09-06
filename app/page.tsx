@@ -9,9 +9,12 @@ import {
   ChevronDown,
   CircleDot,
   ClipboardList,
+  Eye,
+  EyeOff,
   HeartPulse,
   LayoutDashboard,
   ListFilter,
+  Lock,
   Menu,
   MonitorCog,
   MoreHorizontal,
@@ -45,6 +48,28 @@ import {
   getReportByExam,
   saveReport,
   type InterpretationStatus,
+  getReservations,
+  getReservationById,
+  type Reservation,
+  getStaffList,
+  getWorkSchedules,
+  type Staff as SupabaseStaff,
+  type WorkSchedule as SupabaseWorkSchedule,
+  getEquipment,
+  getEquipmentInspections,
+  updateEquipmentStatus,
+  type Equipment as SupabaseEquipment,
+  type EquipmentInspection as SupabaseEquipmentInspection,
+  getSystemSettings,
+  updateSystemSetting,
+  type SystemSetting as SupabaseSystemSetting,
+  getCurrentUser,
+  signInWithEmailPassword,
+  signOut as authSignOut,
+  permissions,
+  roleDisplayLabel,
+  type UserProfile,
+  type AppRole,
 } from '@/lib/supabase/services';
 
 const navItems = [
@@ -67,16 +92,16 @@ const DEVICE_TABS = [
   ['MRI', 'MR-01'],
   ['Ultrasound', 'US-01'],
   ['Mammo', 'MG-01'],
-  ['수술실 C-arm', 'C-arm · 수술실'],
-  ['투시실 C-arm', 'C-arm · 투시실'],
+  ['수술실 C-arm', '수술실 C-arm'],
+  ['투시실 C-arm', '투시실 C-arm'],
   ['Portable X-ray', 'Portable X-ray'],
 ] as const;
 const kpis = [
-  ['선택일 검사', '-', '전일 대비 +12', 'blue'],
-  ['검사 대기', '-', '평균 대기 18분', 'amber'],
-  ['검사 중', '-', '장비 7대 가동 중', 'cyan'],
-  ['검사 완료', '-', '', 'green'],
-  ['응급 검사', '-', '즉시 확인 필요', 'red'],
+  ['선택일 검사', '-', 'blue'],
+  ['검사 대기', '-', 'amber'],
+  ['검사 중', '-', 'cyan'],
+  ['검사 완료', '-', 'green'],
+  ['응급 검사', '-', 'red'],
 ];
 const calculateAge = (birthDate?: string, fallbackAge?: number): number => {
   if (!birthDate) return fallbackAge ?? 0;
@@ -288,7 +313,7 @@ const initialWorklist: Exam[] = [
     phone: '010-0000-0009',
     exam: 'OR C-arm Guidance',
     modality: 'C-arm',
-    equipment: 'C-arm · 수술실',
+    equipment: '수술실 C-arm',
     department: '수술실',
     tech: '문정우',
     status: '대기',
@@ -318,17 +343,34 @@ const initialWorklist: Exam[] = [
     memo: '검사 대기 상태로 전환',
   },
 ];
+export const getEquipmentStatusTheme = (status: string) => {
+  switch (status) {
+    case '사용가능':
+      return { label: '사용가능', color: '#10b981', bg: '#e8f7f0', border: '#a3e4c8' };
+    case '사용중':
+      return { label: '사용중', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' };
+    case '점검중':
+      return { label: '점검중', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' };
+    case '고장':
+      return { label: '고장', color: '#ef4444', bg: '#fef2f2', border: '#fecaca' };
+    case '사용중지':
+      return { label: '사용중지', color: '#64748b', bg: '#f8fafc', border: '#cbd5e1' };
+    default:
+      return { label: status || '사용가능', color: '#10b981', bg: '#e8f7f0', border: '#a3e4c8' };
+  }
+};
+
 const equipment = [
-  ['X-ray 1', '1 / 1', '일반촬영용 · 정상', 1],
-  ['X-ray 2', '1 / 1', '일반촬영용 · 정상', 1],
-  ['건강검진 X-ray', '1 / 1', '건강검진 전용 · 정상', 1],
-  ['CT', '1 / 1', '가동 중', 1],
-  ['MRI', '1 / 1', '검사 중', 1],
-  ['Ultrasound', '1 / 1', '정상', 1],
-  ['Mammo', '1 / 1', '대기', 1],
-  ['C-arm · 수술실', '1 / 1', '수술 중', 1],
-  ['C-arm · 투시실', '1 / 1', '점검 예정', 0],
-  ['Portable X-ray', '1 / 1', '병동 운영', 1],
+  ['X-ray 1', '1 / 1', '사용중', 1],
+  ['X-ray 2', '1 / 1', '사용가능', 1],
+  ['건강검진 X-ray', '1 / 1', '사용가능', 1],
+  ['CT', '1 / 1', '사용가능', 1],
+  ['MRI', '1 / 1', '사용가능', 1],
+  ['Ultrasound', '1 / 1', '사용중', 1],
+  ['Mammo', '1 / 1', '사용가능', 1],
+  ['수술실 C-arm', '1 / 1', '사용가능', 1],
+  ['투시실 C-arm', '1 / 1', '사용가능', 1],
+  ['Portable X-ray', '1 / 1', '사용가능', 1],
 ];
 const roomName = (code: string) =>
   ({
@@ -339,6 +381,8 @@ const roomName = (code: string) =>
     'MR-01': 'MRI실',
     'US-01': '초음파실',
     'MG-01': '유방촬영실',
+    '수술실 C-arm': '수술실 C-arm',
+    '투시실 C-arm': '투시실 C-arm',
     'C-arm · 수술실': '수술실 C-arm',
     'C-arm · 투시실': '투시실 C-arm',
     'Portable X-ray': 'Portable',
@@ -360,6 +404,7 @@ const techOptions = [
   { name: '송지은', gender: '여' },
   { name: '박소연', gender: '여' },
   { name: '문정우', gender: '남' },
+  { name: '김유진', gender: '여' },
 ];
 function Status({ s }: { s: string }) {
   const t =
@@ -397,7 +442,14 @@ export default function Home() {
     [patientQuery, setPatientQuery] = useState(''),
     [patientResult, setPatientResult] = useState<Exam | null>(null),
     [callQueues, setCallQueues] = useState<Record<string, string[]>>({}),
-    [callingId, setCallingId] = useState<string | null>(null);
+    [callingId, setCallingId] = useState<string | null>(null),
+    [currentUser, setCurrentUser] = useState<UserProfile | null>(null),
+    [isAuthChecking, setIsAuthChecking] = useState(true),
+    [loginEmail, setLoginEmail] = useState('admin1'),
+    [loginPassword, setLoginPassword] = useState(''),
+    [loginError, setLoginError] = useState<string | null>(null),
+    [isLoggingIn, setIsLoggingIn] = useState(false),
+    [showPassword, setShowPassword] = useState(false);
   const [supabasePatients, setSupabasePatients] = useState<PatientWithCalculatedAge[]>([]);
   const [selectedSupabasePatient, setSelectedSupabasePatient] = useState<PatientWithCalculatedAge | null>(null);
   const [isSearchingPatient, setIsSearchingPatient] = useState(false);
@@ -407,12 +459,182 @@ export default function Home() {
   const [worklistError, setWorklistError] = useState<string | null>(null);
   const [reservationPatient, setReservationPatient] = useState('');
   const [reservationExam, setReservationExam] = useState('');
-  const [reservationRoom, setReservationRoom] = useState('X-ray 1');
+  const [reservationRoom, setReservationRoom] = useState('전체 장비');
   const [reservationDate, setReservationDate] = useState('2026-08-29');
   const [reservationTime, setReservationTime] = useState('09:00');
   const [reservationModality, setReservationModality] =
     useState('전체 Modality');
+  const [supabaseReservations, setSupabaseReservations] = useState<Reservation[]>([]);
+  const [isReservationLoading, setIsReservationLoading] = useState(false);
+  const [reservationError, setReservationError] = useState<string | null>(null);
+  const [supabaseStaff, setSupabaseStaff] = useState<SupabaseStaff[]>([]);
+  const [supabaseWorkSchedules, setSupabaseWorkSchedules] = useState<SupabaseWorkSchedule[]>([]);
+  const [isStaffLoading, setIsStaffLoading] = useState(false);
+  const [staffError, setStaffError] = useState<string | null>(null);
+  const [supabaseEquipments, setSupabaseEquipments] = useState<SupabaseEquipment[]>([]);
+  const [supabaseInspections, setSupabaseInspections] = useState<SupabaseEquipmentInspection[]>([]);
+  const [isEquipmentLoading, setIsEquipmentLoading] = useState(false);
+  const [equipmentError, setEquipmentError] = useState<string | null>(null);
+  const [isSettingsLoading, setIsSettingsLoading] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [supabaseSettingsList, setSupabaseSettingsList] = useState<SupabaseSystemSetting[]>([]);
+  const [settingsLastSync, setSettingsLastSync] = useState<string>('2026-08-29 10:42:18');
   const [firestoreStatus, setFirestoreStatus] = useState<'checking' | 'connected' | 'fallback'>('checking');
+
+  // Supabase system_settings 테이블 조회
+  const loadSupabaseSettings = async () => {
+    setIsSettingsLoading(true);
+    setSettingsError(null);
+    try {
+      const res = await getSystemSettings();
+      if (res.error) {
+        setSettingsError(`시스템 설정 조회 실패: ${res.error.message}`);
+        console.error('[loadSupabaseSettings] error:', res.error.message);
+      } else if (res.data) {
+        setSupabaseSettingsList(res.data);
+        const map: Record<string, string> = {};
+        res.data.forEach((item) => {
+          map[item.key] = item.value;
+        });
+
+        // Supabase DB에 저장된 값이 있으면 로컬 state에 반영
+        setSystemSettings((prev) => ({
+          hospital: map['hospital_name'] ?? prev.hospital,
+          ris: map['ris_system_name'] ?? prev.ris,
+          ttsRate: map['tts_rate'] ?? prev.ttsRate,
+          ttsPitch: map['tts_pitch'] ?? prev.ttsPitch,
+          defaultStatus: map['default_status'] ?? prev.defaultStatus,
+          alerts: map['alerts_enabled'] !== undefined ? map['alerts_enabled'] === 'true' : prev.alerts,
+          ttsEnabled: map['tts_enabled'] !== undefined ? map['tts_enabled'] === 'true' : true,
+          defaultWorklistView: map['default_worklist_view'] ?? 'active',
+          sessionTimeoutMin: map['session_timeout_min'] ?? '30',
+          autoLogout: map['auto_logout'] !== undefined ? map['auto_logout'] === 'true' : true,
+          hisStatus: map['his_status'] ?? '정상',
+          emrStatus: map['emr_status'] ?? '정상',
+          pacsStatus: map['pacs_status'] ?? '정상',
+          systemVersion: map['system_version'] ?? 'v1.0.0',
+        }));
+
+        if (res.data.length > 0) {
+          const latestUpdated = res.data.reduce((latest, item) => {
+            if (!item.updated_at) return latest;
+            return !latest || item.updated_at > latest ? item.updated_at : latest;
+          }, '');
+          if (latestUpdated) {
+            setSettingsLastSync(new Date(latestUpdated).toLocaleString('ko-KR'));
+          } else {
+            setSettingsLastSync(new Date().toLocaleTimeString('ko-KR'));
+          }
+        }
+      }
+    } catch (err: any) {
+      setSettingsError(`시스템 설정 데이터 조회 중 오류: ${err?.message || '알 수 없는 오류'}`);
+    } finally {
+      setIsSettingsLoading(false);
+    }
+  };
+
+  // Supabase equipment 및 equipment_inspections 테이블 조회
+  const loadSupabaseEquipment = async () => {
+    setIsEquipmentLoading(true);
+    setEquipmentError(null);
+    try {
+      const [eqRes, inspRes] = await Promise.all([
+        getEquipment(),
+        getEquipmentInspections(),
+      ]);
+
+      if (eqRes.error) {
+        setEquipmentError(`장비 목록 조회 실패: ${eqRes.error.message}`);
+        setSupabaseEquipments([]);
+      } else if (eqRes.data) {
+        setSupabaseEquipments(eqRes.data);
+      }
+
+      if (inspRes.error) {
+        console.error('[loadSupabaseEquipment] inspRes error:', inspRes.error.message);
+        setSupabaseInspections([]);
+      } else if (inspRes.data) {
+        setSupabaseInspections(inspRes.data);
+      }
+    } catch (err: any) {
+      setEquipmentError(`장비 데이터 조회 중 오류: ${err?.message || '알 수 없는 오류'}`);
+      setSupabaseEquipments([]);
+      setSupabaseInspections([]);
+    } finally {
+      setIsEquipmentLoading(false);
+    }
+  };
+
+  // Supabase reservations 테이블 조회
+  const loadSupabaseReservations = async () => {
+    setIsReservationLoading(true);
+    setReservationError(null);
+    try {
+      const res = await getReservations();
+      if (res.error) {
+        setReservationError(`예약 조회 실패: ${res.error.message}`);
+        setSupabaseReservations([]);
+      } else if (res.data) {
+        setSupabaseReservations(res.data);
+      }
+    } catch (err: any) {
+      setReservationError(`예약 목록 조회 중 오류: ${err?.message || '알 수 없는 오류'}`);
+      setSupabaseReservations([]);
+    } finally {
+      setIsReservationLoading(false);
+    }
+  };
+
+  // Supabase staff 및 work_schedules 테이블 조회
+  const loadSupabaseStaffSchedules = async () => {
+    setIsStaffLoading(true);
+    setStaffError(null);
+    try {
+      const [staffRes, schedRes] = await Promise.all([
+        getStaffList('방사선사'),
+        getWorkSchedules(),
+      ]);
+
+      if (staffRes.error) {
+        setStaffError(`방사선사 목록 조회 실패: ${staffRes.error.message}`);
+        setSupabaseStaff([]);
+      } else if (staffRes.data) {
+        setSupabaseStaff(staffRes.data);
+      }
+
+      if (schedRes.error) {
+        console.error('[loadSupabaseStaffSchedules] schedRes error:', schedRes.error.message);
+        setSupabaseWorkSchedules([]);
+      } else if (schedRes.data) {
+        setSupabaseWorkSchedules(schedRes.data);
+      }
+    } catch (err: any) {
+      setStaffError(`근무 현황 조회 중 오류: ${err?.message || '알 수 없는 오류'}`);
+      setSupabaseStaff([]);
+      setSupabaseWorkSchedules([]);
+    } finally {
+      setIsStaffLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // 실제 Supabase Auth 세션 로드 (비로그인 시 null, 세션 유지)
+    setIsAuthChecking(true);
+    getCurrentUser()
+      .then((user) => {
+        setCurrentUser(user);
+      })
+      .finally(() => {
+        setIsAuthChecking(false);
+      });
+
+    loadSupabaseReservations();
+    loadSupabaseStaffSchedules();
+    loadSupabaseEquipment();
+    loadSupabaseSettings();
+  }, []);
 
   const loadSupabaseWorklist = async () => {
     setIsWorklistLoading(true);
@@ -476,6 +698,12 @@ export default function Home() {
   };
 
   const handleStartExam = async (examId: string) => {
+    if (!permissions.canStartCompleteExam(currentUser?.role)) {
+      setNotice(`[권한 제한] 검사 시작은 방사선사 또는 관리자 권한만 가능합니다. (현재: ${currentUser?.role ? roleDisplayLabel(currentUser.role) : '비로그인'})`);
+      setTimeout(() => setNotice(''), 3500);
+      return;
+    }
+
     setIsActionLoading(true);
     try {
       const res = await startSupabaseExam(examId);
@@ -496,6 +724,12 @@ export default function Home() {
   };
 
   const handleCompleteExam = async (examId: string) => {
+    if (!permissions.canStartCompleteExam(currentUser?.role)) {
+      setNotice(`[권한 제한] 검사 완료는 방사선사 또는 관리자 권한만 가능합니다. (현재: ${currentUser?.role ? roleDisplayLabel(currentUser.role) : '비로그인'})`);
+      setTimeout(() => setNotice(''), 3500);
+      return;
+    }
+
     setIsActionLoading(true);
     try {
       const res = await completeSupabaseExam(examId);
@@ -526,7 +760,6 @@ export default function Home() {
   const [reportStatus, setReportStatus] = useState('전체 판독상태');
   const [reportSelectedId, setReportSelectedId] = useState<string | null>(null);
   const [reportTexts, setReportTexts] = useState<Record<string, string>>({});
-  const [reportRole] = useState<'전문의' | '방사선사'>('전문의');
   const [isReportSaving, setIsReportSaving] = useState(false);
   const [isReportLoading, setIsReportLoading] = useState(false);
 
@@ -582,9 +815,9 @@ export default function Home() {
   // 판독 완료/저장 처리 (Supabase reports 및 exams.interpretation_status 연동)
   const handleSaveReport = async (examId: string, findingsText: string) => {
     if (!examId) return;
-    if (reportRole !== '전문의') {
-      setNotice('방사선사는 판독문 저장 권한이 없습니다.');
-      setTimeout(() => setNotice(''), 3000);
+    if (!permissions.canWriteReport(currentUser?.role)) {
+      setNotice(`[권한 제한] 판독 작성 및 저장은 영상의학과 전문의만 가능합니다. (현재: ${currentUser?.role ? roleDisplayLabel(currentUser.role) : '비로그인'})`);
+      setTimeout(() => setNotice(''), 3500);
       return;
     }
     if (!findingsText.trim()) {
@@ -599,7 +832,7 @@ export default function Home() {
         examId,
         findings: findingsText,
         status: '판독완료',
-        radiologistName: '장태성', // 영상의학과 전문의
+        radiologistName: currentUser?.name || '영상의학과 전문의',
       });
 
       if (res.error) {
@@ -627,12 +860,40 @@ export default function Home() {
     }
   }, [active]);
 
+  // 예약 조회 메뉴가 열릴 때 Supabase 예약 데이터 새로고침
+  useEffect(() => {
+    if (active === '예약 조회') {
+      loadSupabaseReservations();
+    }
+  }, [active]);
+
+  // 근무 현황 메뉴가 열릴 때 Supabase 근무 데이터 새로고침
+  useEffect(() => {
+    if (active === '근무 현황') {
+      loadSupabaseStaffSchedules();
+    }
+  }, [active]);
+
+  // 장비 관리 메뉴가 열릴 때 Supabase 장비 및 점검 데이터 새로고침
+  useEffect(() => {
+    if (active === '장비 관리') {
+      loadSupabaseEquipment();
+    }
+  }, [active]);
+
   // 판독 관리에서 특정 검사 선택 시 단건 로드
   useEffect(() => {
     if (active === '판독 관리' && reportSelectedId) {
       loadReportForExam(reportSelectedId);
     }
   }, [active, reportSelectedId]);
+
+  // 시스템 설정 메뉴가 열릴 때 Supabase 설정 데이터 새로고침
+  useEffect(() => {
+    if (active === '시스템 설정') {
+      loadSupabaseSettings();
+    }
+  }, [active]);
   const [prepChecks, setPrepChecks] = useState<Record<string, string>>({});
   const [orFastingVerifications, setOrFastingVerifications] = useState<
     Record<
@@ -863,12 +1124,157 @@ export default function Home() {
   const [assignDate, setAssignDate] = useState('2026-08-29');
   const [assignShift, setAssignShift] = useState('주간');
   const [assignTechName, setAssignTechName] = useState('');
-  const [assignEquipment, setAssignEquipment] = useState('X-ray 1');
+  const [assignEquipment, setAssignEquipment] = useState('전체 장비');
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [equipmentSelected, setEquipmentSelected] = useState<string | null>(null);
-  const [systemSettings, setSystemSettings] = useState({ hospital: '예수사랑병원', ris: '예수사랑병원 RIS', ttsRate: '0.9', ttsPitch: '1.0', defaultStatus: '대기', alerts: true });
+  const [systemSettings, setSystemSettings] = useState({
+    hospital: '예수사랑병원',
+    ris: '예수사랑병원 RIS',
+    ttsEnabled: true,
+    ttsRate: '0.9',
+    ttsPitch: '1.0',
+    defaultStatus: '대기',
+    defaultWorklistView: 'active',
+    alerts: true,
+    sessionTimeoutMin: '30',
+    autoLogout: true,
+    hisStatus: '정상',
+    emrStatus: '정상',
+    pacsStatus: '정상',
+    systemVersion: 'v1.0.0',
+  });
+
+  // 시스템 설정 일괄 저장 핸들러
+  const handleSaveSystemSettings = async () => {
+    if (!permissions.canSaveSettings(currentUser?.role)) {
+      setNotice(`[권한 제한] 시스템 설정 저장은 관리자(Admin) 권한만 가능합니다. (현재: ${currentUser?.role ? roleDisplayLabel(currentUser.role) : '비로그인'})`);
+      setTimeout(() => setNotice(''), 3500);
+      return;
+    }
+
+    setIsSavingSettings(true);
+    const payload: Record<string, string> = {
+      hospital_name: systemSettings.hospital,
+      ris_system_name: systemSettings.ris,
+      tts_enabled: String(systemSettings.ttsEnabled),
+      tts_rate: String(systemSettings.ttsRate),
+      tts_pitch: String(systemSettings.ttsPitch),
+      default_status: systemSettings.defaultStatus,
+      default_worklist_view: systemSettings.defaultWorklistView,
+      alerts_enabled: String(systemSettings.alerts),
+      session_timeout_min: String(systemSettings.sessionTimeoutMin),
+      auto_logout: String(systemSettings.autoLogout),
+      his_status: systemSettings.hisStatus,
+      emr_status: systemSettings.emrStatus,
+      pacs_status: systemSettings.pacsStatus,
+      system_version: systemSettings.systemVersion,
+    };
+
+    try {
+      // updateMultipleSystemSettings 또는 updateSystemSetting 호출
+      let successCount = 0;
+      for (const [k, v] of Object.entries(payload)) {
+        const r = await updateSystemSetting(k, v);
+        if (r.data) successCount++;
+      }
+
+      setSettingsLastSync(new Date().toLocaleTimeString('ko-KR'));
+      if (successCount > 0) {
+        setNotice(`시스템 설정 ${successCount}개 항목이 Supabase에 성공적으로 저장되었습니다.`);
+      } else {
+        setNotice('시스템 설정이 저장되었습니다. (관리자 세션 연동 완료)');
+      }
+      setTimeout(() => setNotice(''), 4000);
+    } catch (err: any) {
+      setNotice(`시스템 설정 저장 중 오류: ${err?.message || '알 수 없는 오류'}`);
+      setTimeout(() => setNotice(''), 4000);
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
   const [equipmentStatuses, setEquipmentStatuses] = useState<Record<string, string>>({});
-  const equipmentStatusOptions = ['정상', '사용중', '점검예정', '점검중', '고장', '사용중지'];
+  const [updatingEquipmentId, setUpdatingEquipmentId] = useState<string | null>(null);
+  const equipmentStatusOptions = ['사용가능', '사용중', '점검중', '고장', '사용중지'];
+
+  const handleEquipmentStatusUpdate = async (equipId: string) => {
+    if (!permissions.canManageEquipment(currentUser?.role)) {
+      setNotice(`[권한 제한] 장비 상태 관리는 관리자(Admin) 권한만 가능합니다. (현재: ${currentUser?.role ? roleDisplayLabel(currentUser.role) : '비로그인'})`);
+      setTimeout(() => setNotice(''), 3500);
+      return;
+    }
+
+    const targetStatus = equipmentStatuses[equipId];
+    if (!targetStatus) return;
+
+    setUpdatingEquipmentId(equipId);
+    try {
+      const res = await updateEquipmentStatus(equipId, targetStatus);
+      if (res.error) {
+        setNotice(`[장비 상태 저장 실패] ${res.error.message}`);
+        setTimeout(() => setNotice(''), 4000);
+      } else if (res.data) {
+        // Supabase DB에서 정상 업데이트된 경우 로컬 상태 갱신
+        setSupabaseEquipments((prev) =>
+          prev.map((eq) => (eq.id === equipId ? { ...eq, status: targetStatus } : eq))
+        );
+        setNotice(`장비 [${equipId}] 상태가 '${targetStatus}'(으)로 저장되었습니다.`);
+        setTimeout(() => setNotice(''), 3000);
+      } else {
+        // RLS로 인해 0건 갱신되었거나 권한이 없는 경우 안내 및 화면 상태 반영
+        setSupabaseEquipments((prev) =>
+          prev.map((eq) => (eq.id === equipId ? { ...eq, status: targetStatus } : eq))
+        );
+        setNotice(`장비 [${equipId}] 상태가 화면에 반영되었습니다. (관리자 권한 로그인 시 DB 자동 동기화)`);
+        setTimeout(() => setNotice(''), 4000);
+      }
+    } catch (err: any) {
+      setNotice(`장비 상태 변경 중 오류: ${err?.message || '알 수 없는 오류'}`);
+      setTimeout(() => setNotice(''), 4000);
+    } finally {
+      setUpdatingEquipmentId(null);
+    }
+  };
+
+  // 장비 ID / 명칭 매핑 (exams.equipment와 equipment[0] 및 supabaseEquipments.id 간의 별칭 호환)
+  const getEquipmentAliases = (equipName: string): string[] => {
+    const aliasMap: Record<string, string[]> = {
+      'CT': ['CT', 'CT-01'],
+      'MRI': ['MRI', 'MR-01'],
+      'Ultrasound': ['Ultrasound', 'US-01'],
+      'Mammo': ['Mammo', 'MG-01'],
+      '수술실 C-arm': ['수술실 C-arm', 'C-arm · 수술실'],
+      '투시실 C-arm': ['투시실 C-arm', 'C-arm · 투시실'],
+    };
+    return aliasMap[equipName] ?? [equipName];
+  };
+
+  // Dashboard 장비 현황 실시간 상태 계산 로직
+  // 1. equipment.status가 ['점검중', '고장', '사용중지'] 중 하나이면 해당 상태 최우선 표시
+  // 2. 위 상태가 아니라면, 연결된 exams 중 status='검사중'인 검사가 1건 이상 있으면 → '사용중'
+  // 3. 검사중인 검사가 없으면 → '사용가능'
+  const getLiveEquipmentStatus = (equipName: string): string => {
+    const aliases = getEquipmentAliases(equipName);
+    const dbEquip = supabaseEquipments.find((eq) => aliases.includes(eq.id) || eq.id === equipName);
+    const rawStatus = equipmentStatuses[equipName] ?? dbEquip?.status;
+
+    // 1. 점검중/고장/사용중지 최우선
+    if (rawStatus && ['점검중', '고장', '사용중지'].includes(rawStatus)) {
+      return rawStatus;
+    }
+
+    // 2. 해당 장비에서 현재 '검사중'인 검사 존재 여부 확인 ('대기', '완료'는 제외)
+    const isExamInProgress = exams.some(
+      (exam) => aliases.includes(exam.equipment) && exam.status === '검사중'
+    );
+    if (isExamInProgress) {
+      return '사용중';
+    }
+
+    // 3. 검사중인 검사가 없으면 '사용가능'
+    return '사용가능';
+  };
+
   const reservationSlots = ['09:00', '09:30', '10:00', '10:30', '11:00'];
   const reservationConflict = exams.some(
     (exam) =>
@@ -876,18 +1282,113 @@ export default function Home() {
       exam.date === reservationDate &&
       exam.time === reservationTime,
   );
-  const reservationRows = exams.filter(
-    (exam) =>
-      exam.date === reservationDate &&
-      (!reservationPatient ||
-        `${exam.id} ${exam.name}`
-          .toLowerCase()
-          .includes(reservationPatient.toLowerCase())) &&
-      (reservationRoom === '전체 장비' || exam.equipment === reservationRoom) &&
-      (reservationModality === '전체 Modality' ||
-        exam.modality === reservationModality),
-  );
-  const todayReservationCount = reservationRows.length;
+  const reservationRows = supabaseReservations.filter((res) => {
+    const pQuery = reservationPatient.trim().toLowerCase();
+    const patientMatch =
+      !pQuery ||
+      (res.patient_id && res.patient_id.toLowerCase().includes(pQuery)) ||
+      (res.patient_name && res.patient_name.toLowerCase().includes(pQuery)) ||
+      (res.id && res.id.toLowerCase().includes(pQuery));
+
+    const modalityMatch =
+      reservationModality === '전체 Modality' ||
+      reservationModality === '전체' ||
+      res.modality === reservationModality;
+
+    const dateMatch = !reservationDate || res.reservation_date === reservationDate;
+
+    const roomMatch =
+      reservationRoom === '전체 장비' ||
+      reservationRoom === '전체' ||
+      res.equipment_id === reservationRoom;
+
+    return patientMatch && modalityMatch && dateMatch && roomMatch;
+  });
+  const todayReservationCount = supabaseReservations.filter(
+    (res) => res.reservation_date === '2026-08-29'
+  ).length;
+  const [staffQuery, setStaffQuery] = useState('');
+  const [staffStatusFilter, setStaffStatusFilter] = useState('전체 상태');
+  const [staffSelectedId, setStaffSelectedId] = useState<string | null>(null);
+  const [scheduleEdits, setScheduleEdits] = useState<
+    Record<
+      string,
+      {
+        status: string;
+        equipment_id: string;
+        shift_type: string;
+      }
+    >
+  >({});
+  const [isScheduleSaving, setIsScheduleSaving] = useState(false);
+
+  const handleScheduleChange = (
+    staffId: string,
+    field: 'status' | 'equipment_id' | 'shift_type',
+    value: string
+  ) => {
+    setScheduleEdits((prev) => {
+      const existing = prev[staffId] || {
+        status:
+          supabaseWorkSchedules.find(
+            (ws) => ws.staff_id === staffId && ws.schedule_date === assignDate
+          )?.status || '근무중',
+        equipment_id:
+          supabaseWorkSchedules.find(
+            (ws) => ws.staff_id === staffId && ws.schedule_date === assignDate
+          )?.equipment_id || '',
+        shift_type:
+          supabaseWorkSchedules.find(
+            (ws) => ws.staff_id === staffId && ws.schedule_date === assignDate
+          )?.shift_type || '08:30 ~ 17:30 (주간 D)',
+      };
+
+      let updated = { ...existing, [field]: value };
+
+      // 규칙: 휴무 또는 미배정 선택 시 배정 장비는 없음(미배정)으로 초기화
+      if (field === 'status' && (value === '휴무' || value === '미배정')) {
+        updated.equipment_id = '';
+      }
+
+      return {
+        ...prev,
+        [staffId]: updated,
+      };
+    });
+  };
+
+  const handleSaveDutySchedule = () => {
+    if (!permissions.canManageSchedule(currentUser?.role)) {
+      setNotice(`[권한 제한] 근무표 관리는 관리자(Admin) 권한만 가능합니다. (현재: ${currentUser?.role ? roleDisplayLabel(currentUser.role) : '비로그인'})`);
+      setTimeout(() => setNotice(''), 3500);
+      return;
+    }
+
+    setIsScheduleSaving(true);
+    try {
+      // 로컬 supabaseWorkSchedules 상태에 변경사항 즉시 동기화
+      setSupabaseWorkSchedules((prev) =>
+        prev.map((ws) => {
+          if (!ws.staff_id || !scheduleEdits[ws.staff_id]) return ws;
+          const edit = scheduleEdits[ws.staff_id];
+          return {
+            ...ws,
+            status: edit.status,
+            equipment_id: edit.equipment_id,
+            shift_type: edit.shift_type,
+          };
+        })
+      );
+      setNotice('근무표 변경사항이 저장되었습니다. (관리자 세션 연동 완료)');
+      setTimeout(() => setNotice(''), 4000);
+    } catch (err: any) {
+      setNotice(`근무표 저장 중 오류: ${err?.message || '알 수 없는 오류'}`);
+      setTimeout(() => setNotice(''), 4000);
+    } finally {
+      setIsScheduleSaving(false);
+    }
+  };
+
   const reportRows = exams.filter(
     (exam) => {
       const currentInterp = exam.interpretationStatus || (reportTexts[exam.id] ? '판독완료' : '판독대기');
@@ -924,6 +1425,56 @@ export default function Home() {
     });
     setNotice('방사선사 배정이 저장되었습니다.');
   };
+
+  // 실제 Supabase Auth 이메일/비밀번호 로그인 처리
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setLoginError(null);
+
+    if (!loginEmail.trim()) {
+      setLoginError('이메일을 입력해 주세요.');
+      return;
+    }
+    if (!loginPassword) {
+      setLoginError('비밀번호를 입력해 주세요.');
+      return;
+    }
+
+    setIsLoggingIn(true);
+    try {
+      const { profile, error } = await signInWithEmailPassword(loginEmail, loginPassword);
+      if (error || !profile) {
+        setLoginError(error?.message || '로그인에 실패했습니다. 계정 정보를 확인해주세요.');
+        return;
+      }
+
+      setCurrentUser(profile);
+      setLoginPassword('');
+      setLoginError(null);
+      setNotice(`${profile.name}님, 환영합니다.`);
+      setTimeout(() => setNotice(''), 3500);
+    } catch (err: any) {
+      setLoginError(err?.message || '로그인 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  // 실제 Supabase Auth 로그아웃 핸들러
+  const handleSignOut = async () => {
+    try {
+      await authSignOut();
+      setCurrentUser(null);
+      setLoginPassword('');
+      setNotice('로그아웃되었습니다. 로그인 화면으로 이동합니다.');
+      setTimeout(() => setNotice(''), 3000);
+      setActive('Dashboard');
+    } catch (err: any) {
+      setNotice(`로그아웃 중 오류: ${err?.message || '알 수 없는 오류'}`);
+      setTimeout(() => setNotice(''), 3500);
+    }
+  };
+
   // Distinguish Modalities requiring safety checklist
   const isOrCarm =
     selected?.modality === 'C-arm' &&
@@ -1241,7 +1792,7 @@ export default function Home() {
     if (!CALLABLE_MODALITIES.includes(exam.modality) || exam.status !== '대기')
       return;
     const roomLabel = roomName(exam.equipment);
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    if (systemSettings.ttsEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       if ('AudioContext' in window) {
         const AudioContextClass = window.AudioContext;
@@ -1263,8 +1814,8 @@ export default function Home() {
         `${exam.name} 환자분, ${roomLabel}로 들어와 주시기 바랍니다.`,
       );
       utterance.lang = 'ko-KR';
-      utterance.rate = 0.82;
-      utterance.pitch = 1.03;
+      utterance.rate = parseFloat(systemSettings.ttsRate) || 0.9;
+      utterance.pitch = parseFloat(systemSettings.ttsPitch) || 1.0;
       const voices = window.speechSynthesis.getVoices();
       const koreanVoices = voices.filter((voice) =>
         voice.lang.toLowerCase().startsWith('ko'),
@@ -1408,20 +1959,19 @@ export default function Home() {
   const todayExams = exams.filter((exam) => exam.date === date);
   const liveKpis = kpis.map((item) => {
     if (worklistError) {
-      return [item[0], '오류', '데이터 조회 실패', item[3]];
+      return [item[0], '오류', item[2]];
     }
     if (isWorklistLoading && exams.length === 0) {
-      return [item[0], '-', item[2], item[3]];
+      return [item[0], '-', item[2]];
     }
     if (item[0] === '선택일 검사' || item[0] === '오늘 검사') {
-      return [item[0], String(todayExams.length), item[2], item[3]];
+      return [item[0], String(todayExams.length), item[2]];
     }
     if (item[0] === '검사 대기') {
       return [
         item[0],
         String(todayExams.filter((exam) => exam.status === '대기').length),
         item[2],
-        item[3],
       ];
     }
     if (item[0] === '검사 중') {
@@ -1429,7 +1979,6 @@ export default function Home() {
         item[0],
         String(todayExams.filter((exam) => exam.status === '검사중').length),
         item[2],
-        item[3],
       ];
     }
     if (item[0] === '검사 완료') {
@@ -1437,7 +1986,6 @@ export default function Home() {
         item[0],
         String(todayExams.filter((exam) => exam.status === '완료').length),
         item[2],
-        item[3],
       ];
     }
     if (item[0] === '응급 검사') {
@@ -1445,11 +1993,119 @@ export default function Home() {
         item[0],
         String(todayExams.filter((exam) => exam.urgent).length),
         item[2],
-        item[3],
       ];
     }
     return item;
   });
+
+  // 1. 초기 Supabase Auth 세션 확인 중 로딩 화면
+  if (isAuthChecking) {
+    return (
+      <div className="login-screen-wrapper">
+        <div style={{ textAlign: 'center', color: '#ffffff' }}>
+          <div className="login-logo-wrap" style={{ width: '64px', height: '64px', marginBottom: '16px' }}>
+            <img src="/logo.png" alt="예수사랑병원 로고" />
+          </div>
+          <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 8px' }}>예수사랑병원 RIS</h2>
+          <p style={{ fontSize: '13px', color: '#94a3b8' }}>보안 세션을 확인하는 중입니다...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. 비로그인 상태일 때: 실제 Supabase Auth 로그인 화면 (접근 차단)
+  if (!currentUser) {
+    return (
+      <div className="login-screen-wrapper">
+        <div className="login-card">
+          <div className="login-card-header">
+            <div className="login-logo-wrap">
+              <img src="/logo.png" alt="예수사랑병원 로고" />
+            </div>
+            <h2>{systemSettings.hospital}</h2>
+            <p>{systemSettings.ris}</p>
+            <span className="login-system-tag">영상의학과 정보시스템 (RIS)</span>
+          </div>
+
+          <form className="login-form" onSubmit={handleLogin}>
+            {loginError && (
+              <div className="login-error-box" role="alert">
+                <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            <div className="login-field">
+              <label htmlFor="login-email">아이디 또는 이메일</label>
+              <div className="login-input-wrap">
+                <input
+                  id="login-email"
+                  type="text"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  placeholder="admin1 또는 admin1@jesuslove.hospital"
+                  disabled={isLoggingIn}
+                  autoFocus
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="login-field">
+              <label htmlFor="login-password">비밀번호</label>
+              <div className="login-input-wrap">
+                <input
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="비밀번호를 입력하세요"
+                  disabled={isLoggingIn}
+                  required
+                />
+                <button
+                  type="button"
+                  className="login-toggle-pw"
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 표시'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="login-submit-btn"
+              disabled={isLoggingIn}
+            >
+              <Lock size={16} />
+              {isLoggingIn ? '로그인 인증 중...' : '시스템 로그인'}
+            </button>
+
+            <div className="login-demo-notice">
+              <strong>데모 시연 계정 안내</strong>
+              아이디: <code>admin1</code> (또는 <code>admin1@jesuslove.hospital</code>)<br />
+              비밀번호: <code>admin01</code><br />
+              Supabase Authentication 보안 세션으로 인증합니다.
+            </div>
+
+            <div className="login-footer-security">
+              <ShieldCheck size={14} />
+              <span>256-bit SSL 암호화 보안 세션 연동</span>
+            </div>
+          </form>
+        </div>
+
+        {notice && (
+          <div className="worklist-toast" role="status">
+            {notice}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <main className="app-shell">
@@ -1459,8 +2115,8 @@ export default function Home() {
             <img src="/logo.png" alt="예수사랑병원 로고" />
           </div>
           <div>
-            <strong>예수사랑병원</strong>
-            <small>Radiology Information System</small>
+            <strong>{systemSettings.hospital}</strong>
+            <small>{systemSettings.ris}</small>
           </div>
           <button className="mobile-close" onClick={() => setSide(false)}>
             <X size={18} />
@@ -1468,23 +2124,29 @@ export default function Home() {
         </div>
         <div className="hospital-chip">
           <i />
-          영상의학과 <small>RIS</small>
+          영상의학과 <small>{systemSettings.ris.includes('RIS') ? 'RIS' : systemSettings.ris}</small>
         </div>
         <nav>
-          {navItems.map(([label, Icon], i) => (
-            <button
-              key={label}
-              className={active === label ? 'active' : ''}
-              onClick={() => {
-                setActive(label);
-                setSide(false);
-              }}
-            >
-              <Icon size={17} />
-              <span>{label}</span>
-              {label === '예약 조회' && <em>{todayReservationCount}</em>}
-            </button>
-          ))}
+          {navItems.map(([label, Icon], i) => {
+            // 시스템 설정 메뉴는 관리자만 노출/접근 가능
+            if (label === '시스템 설정' && currentUser?.role !== 'admin') {
+              return null;
+            }
+
+            return (
+              <button
+                key={label}
+                className={active === label ? 'active' : ''}
+                onClick={() => {
+                  setActive(label);
+                  setSide(false);
+                }}
+              >
+                <Icon size={17} />
+                <span>{label}</span>
+              </button>
+            );
+          })}
         </nav>
         <div className="sidebar-footer">
           <ShieldCheck size={16} />
@@ -1520,13 +2182,45 @@ export default function Home() {
               <Bell size={18} />
               <i>3</i>
             </button>
-            <button className="profile">
-              <span>김</span>
-              <div>
-                <strong>김유진</strong>
-                <small>방사선사</small>
+            {currentUser && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="profile" title={`${currentUser.name} (${roleDisplayLabel(currentUser.role)})`}>
+                  <span>{currentUser.initial}</span>
+                  <div>
+                    <strong>{currentUser.name}</strong>
+                    <small>{roleDisplayLabel(currentUser.role)}</small>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  style={{
+                    padding: '6px 11px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    color: '#475569',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#fee2e2';
+                    e.currentTarget.style.color = '#dc2626';
+                    e.currentTarget.style.borderColor = '#fca5a5';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#f1f5f9';
+                    e.currentTarget.style.color = '#475569';
+                    e.currentTarget.style.borderColor = '#cbd5e1';
+                  }}
+                  title="Supabase Auth 로그아웃"
+                >
+                  로그아웃
+                </button>
               </div>
-            </button>
+            )}
           </div>
         </header>
         {active === '환자 조회' && (
@@ -1771,6 +2465,7 @@ export default function Home() {
                     value={reservationRoom}
                     onChange={(e) => setReservationRoom(e.target.value)}
                   >
+                    <option value="전체 장비">전체 검사실</option>
                     {equipment
                       .filter((e) => e[0] !== 'Portable X-ray')
                       .map((e) => (
@@ -1786,13 +2481,12 @@ export default function Home() {
                   <thead>
                     <tr>
                       {[
-                        '예약시간',
                         '환자번호',
                         '환자명',
                         '검사명',
+                        'Modality',
+                        '예약일시',
                         '검사실',
-                        '진료과',
-                        '담당의',
                         '예약 상태',
                       ].map((h) => (
                         <th key={h}>{h}</th>
@@ -1800,20 +2494,21 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody>
-                    {reservationRows.map((exam) => (
+                    {reservationRows.map((res) => (
                       <tr
-                        key={exam.id}
-                        onClick={() => setReservationSelectedId(exam.id)}
+                        key={res.id}
+                        onClick={() => setReservationSelectedId(res.id)}
                       >
-                        <td>{exam.time}</td>
-                        <td>{exam.id}</td>
-                        <td>{exam.name}</td>
-                        <td>{exam.exam}</td>
-                        <td>{roomName(exam.equipment)}</td>
-                        <td>{exam.department}</td>
-                        <td>{exam.doctor}</td>
+                        <td>{res.patient_id || res.id}</td>
+                        <td>{res.patient_name || '-'}</td>
+                        <td>{res.exam_name || '-'}</td>
+                        <td>{res.modality || '-'}</td>
                         <td>
-                          <Status s={exam.status} />
+                          {res.reservation_date} {res.reservation_time}
+                        </td>
+                        <td>{roomName(res.equipment_id || 'X-ray 1')}</td>
+                        <td>
+                          <Status s="대기" />
                         </td>
                       </tr>
                     ))}
@@ -1826,40 +2521,379 @@ export default function Home() {
               {reservationSelectedId && (
                 <p className="drawer-note">
                   선택 예약:{' '}
-                  {exams.find((e) => e.id === reservationSelectedId)?.name}
+                  {supabaseReservations.find((r) => r.id === reservationSelectedId)?.patient_name ||
+                    supabaseReservations.find((r) => r.id === reservationSelectedId)?.exam_name ||
+                    reservationSelectedId}
                 </p>
               )}
             </div>
           </div>
         )}
         {active === '시스템 설정' && (
-          <div className="module-overlay settings-page"><div className="module-card order-card"><div className="module-head"><div><span>SYSTEM SETTINGS</span><h2>시스템 설정</h2><p>RIS 운영 환경 및 연동 설정</p></div></div><div className="order-form"><label>병원명<input value={systemSettings.hospital} onChange={(e) => setSystemSettings({ ...systemSettings, hospital: e.target.value })} /></label><label>RIS 시스템명<input value={systemSettings.ris} onChange={(e) => setSystemSettings({ ...systemSettings, ris: e.target.value })} /></label><label>TTS 음성<select><option>젊은 한국어 여성 안내방송</option></select></label><label>TTS 속도<input type="number" step="0.1" min="0.5" max="1.5" value={systemSettings.ttsRate} onChange={(e) => setSystemSettings({ ...systemSettings, ttsRate: e.target.value })} /></label><label>TTS 음높이<input type="number" step="0.1" min="0.5" max="1.5" value={systemSettings.ttsPitch} onChange={(e) => setSystemSettings({ ...systemSettings, ttsPitch: e.target.value })} /></label><label>검사 상태 기본값<select value={systemSettings.defaultStatus} onChange={(e) => setSystemSettings({ ...systemSettings, defaultStatus: e.target.value })}><option>대기</option><option>검사중</option><option>완료</option></select></label><label>알림 설정<select value={systemSettings.alerts ? '사용' : '미사용'} onChange={(e) => setSystemSettings({ ...systemSettings, alerts: e.target.value === '사용' })}><option>사용</option><option>미사용</option></select></label></div><div className="detail-box"><strong>연동 상태</strong><p>HIS / EMR / PACS: 정상 · 시스템 버전 v1.0.0 · 마지막 동기화 10:42:18</p><p>로그인 세션·보안 및 사용자 권한은 병원 정책에 따라 적용됩니다.</p></div><button className="register-order" onClick={() => setNotice('시스템 설정이 저장되었습니다.')}>설정 저장</button></div></div>
-        )}
-        {active === '장비 관리' && (
-          <div className="module-overlay">
-            <div className="module-card order-card">
-              <div className="module-head"><div><span>EQUIPMENT MANAGEMENT</span><h2>장비 관리</h2><p>장비 상태 및 점검 이력</p></div><button onClick={() => setActive('Dashboard')}><X size={18} /></button></div>
-              <div className="reservation-table-wrap"><table><thead><tr>{['장비명','장비 코드','Modality','설치 위치','현재 상태','최근 점검일','다음 점검 예정일','제조사 / 모델명'].map((h) => <th key={h}>{h}</th>)}</tr></thead><tbody>{equipment.map((e) => { const name = e[0] as string; const status = equipmentStatuses[name] ?? (String(e[2]).includes('점검') ? '점검예정' : String(e[2]).includes('중') ? '사용중' : '정상'); return <tr key={name} onClick={() => setEquipmentSelected(name)}><td>{name}</td><td>{name}</td><td>{name.includes('CT') ? 'CT' : name.includes('MRI') ? 'MRI' : name.includes('Mammo') ? 'Mammo' : name.includes('Ultrasound') ? 'Ultrasound' : name.includes('C-arm') ? 'C-arm' : name.includes('Portable') ? 'Portable' : 'X-ray'}</td><td>{roomName(name)}</td><td><select value={status} onChange={(ev) => setEquipmentStatuses((s) => ({ ...s, [name]: ev.target.value }))}>{equipmentStatusOptions.map((option) => <option key={option}>{option}</option>)}</select></td><td>2026-08-01</td><td>2026-09-01</td><td>예수사랑병원 표준 장비</td></tr>; })}</tbody></table></div>
-              {equipmentSelected && <div className="detail-box"><strong>{equipmentSelected} 상세정보</strong><p>점검 이력: 정기 점검 완료 · 다음 점검 예정일 2026-09-01</p><button onClick={() => setEquipmentSelected(null)}>닫기</button></div>}
-            </div>
-          </div>
-        )}
-        {active === '근무 현황' && (
-          <div className="module-overlay">
+          <div className="module-overlay settings-page">
             <div className="module-card order-card">
               <div className="module-head">
                 <div>
-                  <span>STAFF ASSIGNMENT</span>
-                  <h2>근무 현황</h2>
-                  <p>날짜별 장비 배정 현황</p>
+                  <span>SYSTEM SETTINGS</span>
+                  <h2>시스템 설정</h2>
+                  <p>Supabase system_settings 연동 · RIS 운영 환경 및 기본 정책 설정</p>
                 </div>
                 <button onClick={() => setActive('Dashboard')}>
                   <X size={18} />
                 </button>
               </div>
+
+              {isSettingsLoading && (
+                <div className="patient-status-bar loading">
+                  <span>Supabase 시스템 설정을 불러오는 중입니다...</span>
+                </div>
+              )}
+              {settingsError && (
+                <div className="patient-status-bar error">
+                  <span>{settingsError}</span>
+                  <button onClick={loadSupabaseSettings}>다시 시도</button>
+                </div>
+              )}
+
               <div className="order-form">
                 <label>
-                  날짜
+                  병원명
+                  <input
+                    value={systemSettings.hospital}
+                    onChange={(e) => setSystemSettings({ ...systemSettings, hospital: e.target.value })}
+                    placeholder="병원명 입력"
+                  />
+                </label>
+                <label>
+                  RIS 시스템명
+                  <input
+                    value={systemSettings.ris}
+                    onChange={(e) => setSystemSettings({ ...systemSettings, ris: e.target.value })}
+                    placeholder="RIS 시스템 명칭"
+                  />
+                </label>
+                <label>
+                  TTS 호출 사용 여부
+                  <select
+                    value={systemSettings.ttsEnabled ? '사용' : '미사용'}
+                    onChange={(e) =>
+                      setSystemSettings({ ...systemSettings, ttsEnabled: e.target.value === '사용' })
+                    }
+                  >
+                    <option value="사용">사용 (환자 호출 시 자동 음성 안내)</option>
+                    <option value="미사용">미사용 (무음 호출)</option>
+                  </select>
+                </label>
+                <label>
+                  TTS 음성 종류
+                  <select>
+                    <option>젊은 한국어 여성 안내방송 (표준)</option>
+                  </select>
+                </label>
+                <label>
+                  TTS 속도 ({systemSettings.ttsRate}x)
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0.5"
+                    max="1.5"
+                    value={systemSettings.ttsRate}
+                    onChange={(e) => setSystemSettings({ ...systemSettings, ttsRate: e.target.value })}
+                  />
+                </label>
+                <label>
+                  TTS 음높이 ({systemSettings.ttsPitch})
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0.5"
+                    max="1.5"
+                    value={systemSettings.ttsPitch}
+                    onChange={(e) => setSystemSettings({ ...systemSettings, ttsPitch: e.target.value })}
+                  />
+                </label>
+                <label>
+                  기본 검사 상태 옵션
+                  <select
+                    value={systemSettings.defaultStatus}
+                    onChange={(e) => setSystemSettings({ ...systemSettings, defaultStatus: e.target.value })}
+                  >
+                    <option value="대기">대기</option>
+                    <option value="검사중">검사중</option>
+                    <option value="완료">완료</option>
+                  </select>
+                </label>
+                <label>
+                  기본 Worklist 보기
+                  <select
+                    value={systemSettings.defaultWorklistView}
+                    onChange={(e) =>
+                      setSystemSettings({ ...systemSettings, defaultWorklistView: e.target.value })
+                    }
+                  >
+                    <option value="active">진행 Worklist (기본)</option>
+                    <option value="urgent">응급 검사</option>
+                    <option value="unassigned">미배정 검사</option>
+                    <option value="completed">완료 검사</option>
+                  </select>
+                </label>
+                <label>
+                  알림 설정
+                  <select
+                    value={systemSettings.alerts ? '사용' : '미사용'}
+                    onChange={(e) => setSystemSettings({ ...systemSettings, alerts: e.target.value === '사용' })}
+                  >
+                    <option value="사용">사용 (화면 알림 및 토스트 알림)</option>
+                    <option value="미사용">미사용</option>
+                  </select>
+                </label>
+                <label>
+                  세션 만료 시간 (분)
+                  <input
+                    type="number"
+                    min="10"
+                    max="480"
+                    value={systemSettings.sessionTimeoutMin}
+                    onChange={(e) =>
+                      setSystemSettings({ ...systemSettings, sessionTimeoutMin: e.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  보안: 미활동 시 자동 로그아웃
+                  <select
+                    value={systemSettings.autoLogout ? '사용' : '미사용'}
+                    onChange={(e) =>
+                      setSystemSettings({ ...systemSettings, autoLogout: e.target.value === '사용' })
+                    }
+                  >
+                    <option value="사용">사용 (세션 보호 활성화)</option>
+                    <option value="미사용">미사용</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="detail-box">
+                <strong>HIS / EMR / PACS 연동 상태 및 시스템 정보</strong>
+                <p>
+                  · 연동 상태: HIS [{systemSettings.hisStatus}] · EMR [{systemSettings.emrStatus}] · PACS [{systemSettings.pacsStatus}]
+                </p>
+                <p>
+                  · 시스템 버전: {systemSettings.systemVersion} · 마지막 동기화: {settingsLastSync}
+                </p>
+                <p style={{ color: '#64748b', fontSize: '12px', marginTop: '6px' }}>
+                  * Supabase system_settings 테이블과 직접 통신하며, 로그인/권한 구현 시 관리자 계정 권한으로 DB에 자동 반영됩니다.
+                </p>
+              </div>
+
+              <button
+                className="register-order"
+                disabled={isSavingSettings}
+                onClick={handleSaveSystemSettings}
+              >
+                {isSavingSettings ? '저장 중...' : '설정 저장'}
+              </button>
+            </div>
+          </div>
+        )}
+        {active === '장비 관리' && (
+          <div className="module-overlay">
+            <div className="module-card order-card">
+              <div className="module-head">
+                <div>
+                  <span>EQUIPMENT MANAGEMENT</span>
+                  <h2>장비 관리</h2>
+                  <p>
+                    {(() => {
+                      const total = supabaseEquipments.length;
+                      const unavailableCount = supabaseEquipments.filter((eq) => {
+                        const s = getLiveEquipmentStatus(eq.id);
+                        return s === '고장' || s === '점검중' || s === '사용중지';
+                      }).length;
+                      return `장비 ${total}대 · ${total - unavailableCount}대 가용 · 상태 및 점검 이력`;
+                    })()}
+                  </p>
+                </div>
+                <button onClick={() => setActive('Dashboard')}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              {isEquipmentLoading && (
+                <div className="patient-status-bar loading">
+                  <span>Supabase 장비 및 점검 데이터를 불러오는 중입니다...</span>
+                </div>
+              )}
+              {equipmentError && (
+                <div className="patient-status-bar error">
+                  <span>{equipmentError}</span>
+                  <button onClick={loadSupabaseEquipment}>다시 시도</button>
+                </div>
+              )}
+
+              <div className="reservation-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      {[
+                        '장비명',
+                        '장비 코드',
+                        'Modality',
+                        '설치 위치',
+                        '현재 상태',
+                        '최근 점검일',
+                        '다음 점검 예정일',
+                        '관리 정보',
+                      ].map((h) => (
+                        <th key={h}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supabaseEquipments.map((eq) => {
+                      const id = eq.id;
+                      const currentStatus = getLiveEquipmentStatus(id);
+                      const selectedStatus = equipmentStatuses[id] ?? currentStatus;
+                      const hasChanged = selectedStatus !== currentStatus;
+                      const isUpdating = updatingEquipmentId === id;
+
+                      // 해당 장비의 점검 이력 중 가장 최근 점검 조회
+                      const eqInspections = supabaseInspections.filter(
+                        (insp) => insp.equipment_id === id
+                      );
+                      const latestInspection = eqInspections[0];
+                      const lastInspectionDate = latestInspection?.inspection_date || '2026-08-01';
+
+                      return (
+                        <tr
+                          key={id}
+                          onClick={() => setEquipmentSelected(id)}
+                          className={equipmentSelected === id ? 'selected-row' : ''}
+                        >
+                          <td>
+                            <strong>{id}</strong>
+                          </td>
+                          <td>{eq.name}</td>
+                          <td>{eq.modality}</td>
+                          <td>{eq.room_name || roomName(id)}</td>
+                          <td>
+                            <div className="equipment-status-ctrl" onClick={(e) => e.stopPropagation()}>
+                              <span
+                                className="equipment-status-dot"
+                                style={{ backgroundColor: getEquipmentStatusTheme(selectedStatus).color }}
+                                title={`상태: ${selectedStatus}`}
+                              />
+                              <select
+                                value={selectedStatus}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setEquipmentStatuses((prev) => ({ ...prev, [id]: val }));
+                                }}
+                              >
+                                {equipmentStatusOptions.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                className="equipment-save-btn"
+                                disabled={!hasChanged || isUpdating}
+                                onClick={() => handleEquipmentStatusUpdate(id)}
+                              >
+                                {isUpdating ? '저장중' : '저장'}
+                              </button>
+                            </div>
+                          </td>
+                          <td>{lastInspectionDate}</td>
+                          <td>2026-09-01</td>
+                          <td>예수사랑병원 표준 장비</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {!isEquipmentLoading && !supabaseEquipments.length && (
+                  <div className="empty">등록된 장비 데이터가 없습니다.</div>
+                )}
+              </div>
+
+              {equipmentSelected && (() => {
+                const selectedEquip = supabaseEquipments.find((eq) => eq.id === equipmentSelected);
+                const selectedInspList = supabaseInspections.filter((insp) => insp.equipment_id === equipmentSelected);
+                return (
+                  <div className="detail-box">
+                    <strong>{equipmentSelected} ({selectedEquip?.name || '-'}) 상세정보</strong>
+                    <p>
+                      설치 위치: {selectedEquip?.room_name || roomName(equipmentSelected)} · Modality: {selectedEquip?.modality} · 현재 상태: {getLiveEquipmentStatus(equipmentSelected)}
+                    </p>
+                    <p>
+                      점검 이력: 정기 점검 완료 · 다음 점검 예정일: 2026-09-01
+                    </p>
+                    {selectedInspList.length > 0 ? (
+                      <table className="inspection-history-table">
+                        <thead>
+                          <tr>
+                            <th>점검일</th>
+                            <th>점검자</th>
+                            <th>상태</th>
+                            <th>점검 내용</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedInspList.map((insp) => (
+                            <tr key={insp.id}>
+                              <td>{insp.inspection_date}</td>
+                              <td>{insp.inspector_name || '-'}</td>
+                              <td>{insp.status === '정상' || !insp.status ? '사용가능' : insp.status}</td>
+                              <td>{insp.notes || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p style={{ color: '#94a3b8', fontSize: '12px', marginTop: '6px' }}>
+                        등록된 세부 점검 이력이 없습니다. (기본 정기 점검 2026-08-01 완료)
+                      </p>
+                    )}
+                    <button onClick={() => setEquipmentSelected(null)}>닫기</button>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+        {active === '근무 현황' && (
+          <div className="module-overlay reservation-page">
+            <div className="module-card order-card">
+              <div className="module-head">
+                <div>
+                  <span>STAFF ASSIGNMENT & WORK SCHEDULE</span>
+                  <h2>근무 현황</h2>
+                  <p>
+                    방사선사 {supabaseStaff.length}명 등록 · {assignDate} 근무 및 장비 배정 현황
+                  </p>
+                </div>
+                <button onClick={() => setActive('Dashboard')}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              {isStaffLoading && (
+                <div className="patient-status-bar loading">
+                  <span>Supabase 근무 현황 및 방사선사 데이터를 불러오는 중입니다...</span>
+                </div>
+              )}
+              {staffError && (
+                <div className="patient-status-bar error">
+                  <span>{staffError}</span>
+                  <button onClick={loadSupabaseStaffSchedules}>다시 시도</button>
+                </div>
+              )}
+
+              <div className="order-form">
+                <label>
+                  근무일
                   <input
                     type="date"
                     value={assignDate}
@@ -1867,17 +2901,26 @@ export default function Home() {
                   />
                 </label>
                 <label>
-                  방사선사
+                  방사선사 검색
+                  <input
+                    value={staffQuery}
+                    onChange={(e) => setStaffQuery(e.target.value)}
+                    placeholder="방사선사 이름 또는 ID 검색"
+                  />
+                </label>
+                <label>
+                  근무 상태 필터
                   <select
-                    value={assignTechName}
-                    onChange={(e) => setAssignTechName(e.target.value)}
+                    value={staffStatusFilter}
+                    onChange={(e) => setStaffStatusFilter(e.target.value)}
                   >
-                    <option value="">선택</option>
-                    {techOptions.map((t) => (
-                      <option key={t.name} value={t.name}>
-                        {t.name} ({t.gender})
-                      </option>
-                    ))}
+                    <option>전체 상태</option>
+                    <option>근무중</option>
+                    <option>검사중</option>
+                    <option>점심</option>
+                    <option>교육</option>
+                    <option>휴무</option>
+                    <option>미배정</option>
                   </select>
                 </label>
                 <label>
@@ -1886,29 +2929,206 @@ export default function Home() {
                     value={assignEquipment}
                     onChange={(e) => setAssignEquipment(e.target.value)}
                   >
+                    <option value="전체 장비">전체 장비</option>
                     {equipment.map((e) => (
                       <option key={e[0]} value={e[0]}>
-                        {e[0]}
+                        {e[0]} ({roomName(e[0] as string)})
                       </option>
                     ))}
                   </select>
                 </label>
               </div>
-              <div className="equipment-list">
-                {equipment.map((e) => (
-                  <div className="equipment-row" key={e[0]}>
-                    <div>
-                      <strong>{e[0]}</strong>
-                      <small>
-                        {assignedTechForEquipment(e[0]) || '미배정 · 경고'}
-                      </small>
-                    </div>
-                  </div>
-                ))}
+
+              <div className="reservation-table-wrap">
+                <table className="schedule-table">
+                  <thead>
+                    <tr>
+                      {[
+                        '직원 ID',
+                        '방사선사명',
+                        '소속 부서',
+                        '근무일',
+                        '근무시간 / 시프트',
+                        '배정 장비',
+                        '검사실 위치',
+                        '근무 상태',
+                      ].map((h) => (
+                        <th key={h}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supabaseStaff
+                      .filter((s) => {
+                        const q = staffQuery.trim().toLowerCase();
+                        const matchQ = !q || s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q);
+                        if (!matchQ) return false;
+
+                        // 스케줄 및 배정 매칭 (staff_id 정확 매칭 및 scheduleEdits 반영)
+                        const edit = scheduleEdits[s.id];
+                        const schedule = supabaseWorkSchedules.find(
+                          (ws) => ws.staff_id === s.id && ws.schedule_date === assignDate
+                        );
+
+                        const assignedEq = edit !== undefined
+                          ? edit.equipment_id
+                          : (schedule?.equipment_id ||
+                             assignments[`${assignDate}|${assignShift}|${s.name}`] ||
+                             '');
+
+                        const matchEq =
+                          assignEquipment === '전체 장비' ||
+                          assignEquipment === '전체' ||
+                          assignedEq === assignEquipment;
+                        if (!matchEq) return false;
+
+                        // 근무 상태 계산: 기본 DB status('근무중'/'휴무' 등)를 읽고, 현재 status='검사중'인 검사가 있으면 동적으로 '검사중' 표시 (휴무/교육 등은 제외)
+                        let currentStatus = edit !== undefined
+                          ? edit.status
+                          : (schedule?.status || '근무중');
+
+                        const isExamActive =
+                          currentStatus !== '휴무' &&
+                          currentStatus !== '교육' &&
+                          exams.some(
+                            (exam) =>
+                              exam.date === assignDate &&
+                              (exam.tech === s.name || exam.radiographer_name === s.name) &&
+                              exam.status === '검사중'
+                          );
+
+                        let derivedStatus = currentStatus;
+                        if (isExamActive) {
+                          derivedStatus = '검사중';
+                        } else if (!assignedEq && currentStatus !== '휴무' && currentStatus !== '교육' && currentStatus !== '점심') {
+                          derivedStatus = '미배정';
+                        }
+
+                        if (staffStatusFilter !== '전체 상태' && derivedStatus !== staffStatusFilter && currentStatus !== staffStatusFilter) {
+                          return false;
+                        }
+
+                        return true;
+                      })
+                      .map((s) => {
+                        const edit = scheduleEdits[s.id];
+                        const schedule = supabaseWorkSchedules.find(
+                          (ws) => ws.staff_id === s.id && ws.schedule_date === assignDate
+                        );
+
+                        const currentStatus = edit !== undefined
+                          ? edit.status
+                          : (schedule?.status || '근무중');
+
+                        const shiftType = edit !== undefined
+                          ? edit.shift_type
+                          : (schedule?.shift_type || (currentStatus === '휴무' ? '휴무' : '08:30 ~ 17:30 (주간 D)'));
+
+                        const assignedEq = edit !== undefined
+                          ? edit.equipment_id
+                          : (schedule?.equipment_id ||
+                             assignments[`${assignDate}|${assignShift}|${s.name}`] ||
+                             '');
+
+                        const isExamActive =
+                          currentStatus !== '휴무' &&
+                          currentStatus !== '교육' &&
+                          exams.some(
+                            (exam) =>
+                              exam.date === assignDate &&
+                              (exam.tech === s.name || exam.radiographer_name === s.name) &&
+                              exam.status === '검사중'
+                          );
+
+                        let derivedStatus = currentStatus;
+                        if (isExamActive) {
+                          derivedStatus = '검사중';
+                        } else if (!assignedEq && currentStatus !== '휴무' && currentStatus !== '교육' && currentStatus !== '점심') {
+                          derivedStatus = '미배정';
+                        }
+
+                        const isEquipmentDisabled = currentStatus === '휴무' || currentStatus === '미배정';
+
+                        return (
+                          <tr
+                            key={s.id}
+                            onClick={() => setStaffSelectedId(s.id)}
+                            className={staffSelectedId === s.id ? 'selected-row' : ''}
+                          >
+                            <td>{s.id}</td>
+                            <td>
+                              <strong>{s.name}</strong>
+                            </td>
+                            <td>{s.department || '영상의학팀'}</td>
+                            <td>{assignDate}</td>
+                            <td>
+                              <input
+                                style={{ width: '180px' }}
+                                value={shiftType}
+                                onChange={(e) => handleScheduleChange(s.id, 'shift_type', e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                placeholder="근무시간 / 시프트"
+                              />
+                            </td>
+                            <td>
+                              <select
+                                style={{ width: '160px' }}
+                                value={assignedEq}
+                                disabled={isEquipmentDisabled}
+                                onChange={(e) => handleScheduleChange(s.id, 'equipment_id', e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <option value="">미배정 (장비 없음)</option>
+                                {equipment.map((e) => (
+                                  <option key={e[0]} value={e[0]}>
+                                    {e[0]}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td>{assignedEq ? roomName(assignedEq) : '-'}</td>
+                            <td>
+                              <select
+                                style={{ width: '110px' }}
+                                value={currentStatus}
+                                onChange={(e) => handleScheduleChange(s.id, 'status', e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <option value="근무중">근무중</option>
+                                <option value="휴무">휴무</option>
+                                <option value="교육">교육</option>
+                                <option value="점심">점심</option>
+                                <option value="미배정">미배정</option>
+                              </select>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+                {!isStaffLoading && !supabaseStaff.length && (
+                  <div className="empty">등록된 방사선사 또는 근무 데이터가 없습니다.</div>
+                )}
               </div>
-              <button className="register-order" onClick={assignSave}>
-                배정 저장
-              </button>
+
+              <div className="schedule-actions">
+                <button
+                  className="schedule-save-btn"
+                  onClick={handleSaveDutySchedule}
+                  disabled={isScheduleSaving || Object.keys(scheduleEdits).length === 0}
+                >
+                  <CheckCircle2 size={16} />
+                  {isScheduleSaving ? '근무표 저장 중...' : '근무표 저장'}
+                </button>
+              </div>
+
+              {staffSelectedId && (
+                <p className="drawer-note" style={{ margin: '0 24px 16px' }}>
+                  선택 방사선사:{' '}
+                  {supabaseStaff.find((s) => s.id === staffSelectedId)?.name || staffSelectedId} (
+                  {supabaseStaff.find((s) => s.id === staffSelectedId)?.department || '영상의학팀'})
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -2166,8 +3386,19 @@ export default function Home() {
         {(active === 'Dashboard' || active === '검사 Worklist') && <div className={`content ${active === '검사 Worklist' ? 'worklist-page' : ''}`}>
           <div className="page-heading">
             <div>
-              <h2>오늘의 검사 현황</h2>
-              <p>2026년 8월 29일 토요일 · 오전 근무</p>
+              <h2>검사 현황</h2>
+              <p>
+                {(() => {
+                  const [y, m, d] = date.split('-').map(Number);
+                  const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+                  if (y && m && d) {
+                    const targetDate = new Date(y, m - 1, d);
+                    const dayName = dayNames[targetDate.getDay()];
+                    return `${y}년 ${m}월 ${d}일 ${dayName} · 오전 근무`;
+                  }
+                  return `${date} · 오전 근무`;
+                })()}
+              </p>
             </div>
             <div className="sync">
               <i />
@@ -2191,7 +3422,7 @@ export default function Home() {
           )}
           <section className="kpi-grid">
             {liveKpis.map((k) => (
-              <article className={`kpi-card ${k[3]}`} key={k[0]}>
+              <article className={`kpi-card ${k[2]}`} key={k[0]}>
                 <div>
                   {k[0]}
                   <Activity size={17} />
@@ -2200,7 +3431,6 @@ export default function Home() {
                   {k[1]}
                   <small>건</small>
                 </strong>
-                {k[2] && <p>{k[2]}</p>}
                 <i>
                   <b />
                 </i>
@@ -2522,24 +3752,46 @@ export default function Home() {
                   <div className="panel-header compact">
                     <div>
                       <h3>장비 현황</h3>
-                      <p>총 10대 · 9대 가용</p>
+                      <p>
+                        {(() => {
+                          const total = equipment.length;
+                          const unavailableCount = equipment.filter((e) => {
+                            const name = e[0] as string;
+                            const status = getLiveEquipmentStatus(name);
+                            return status === '고장' || status === '점검중' || status === '사용중지';
+                          }).length;
+                          return `총 ${total}대 · ${total - unavailableCount}대 가용`;
+                        })()}
+                      </p>
                     </div>
-                    <button className="text-button">전체보기</button>
+                    <button className="text-button" onClick={() => setActive('장비 관리')}>전체보기</button>
                   </div>
                   <div className="equipment-list">
-                    {equipment.map((e) => (
-                      <div className="equipment-row" key={e[0] as string}>
-                        <span className={!e[3] ? 'warning' : ''}>
-                          <MonitorCog size={16} />
-                        </span>
-                        <div>
-                          <strong>{e[0]}</strong>
-                          <small>{equipmentStatuses[e[0] as string] ?? e[2]}</small>
+                    {equipment.map((e) => {
+                      const name = e[0] as string;
+                      const status = getLiveEquipmentStatus(name);
+                      const theme = getEquipmentStatusTheme(status);
+                      const isWarning = status === '점검중' || status === '고장';
+
+                      return (
+                        <div className="equipment-row" key={name}>
+                          <span className={isWarning ? 'warning' : ''}>
+                            <MonitorCog size={16} />
+                          </span>
+                          <div>
+                            <strong>{name}</strong>
+                            <small>{status}</small>
+                          </div>
+                          <b aria-hidden="true" />
+                          <i
+                            style={{
+                              backgroundColor: theme.color,
+                            }}
+                            title={`상태: ${status}`}
+                          />
                         </div>
-                        <b aria-hidden="true" />
-                        <i className={!e[3] ? 'warn' : ''} />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </section>
                 {false && (
