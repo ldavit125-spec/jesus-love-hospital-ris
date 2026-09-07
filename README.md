@@ -513,8 +513,12 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 Live Demo
 
 추후 Vercel 배포 주소 입력:
+```text
+### 🚀 Live Demo
 
-https://YOUR-PROJECT.vercel.app
+[예수사랑병원 RIS 바로가기](https://jesus-love-hospital-ris.vercel.app)
+```
+
 📷 Screenshots
 
 추후 주요 화면 이미지를 추가할 예정입니다.
