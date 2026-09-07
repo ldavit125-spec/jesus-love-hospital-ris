@@ -81,6 +81,7 @@
 나이
 연락처
 검사 이력
+```
 
 환자의 나이는 저장된 생년월일을 기준으로 계산됩니다.
 
@@ -89,12 +90,13 @@
 영상의학과에서 수행해야 할 검사 목록을 관리합니다.
 
 검사 상태는 다음 Workflow를 따릅니다.
-
+```text
 대기
  ↓
 검사중
  ↓
 완료
+```
 
 완료된 검사는 다시 이전 상태로 되돌릴 수 없도록
 역방향 상태 변경을 차단했습니다.
@@ -108,7 +110,7 @@ interpretation_status = 판독대기
 ## 4. 검사 안전 체크리스트
 
 검사 종류별 환자 안전 확인 절차를 구현했습니다.
-
+```text
 CT
 조영제 사용 여부
 조영제 알레르기
@@ -117,6 +119,9 @@ CT
 IV 확보 여부
 임신 가능성
 이동 보조 필요 여부
+```
+
+```text
 MRI
 임신 가능성
 심박동기 및 체내 전자기기
@@ -126,16 +131,18 @@ MRI
 금속성 이물질
 제거 필요 금속 물품
 폐쇄공포증
+```
+
+```text
 Ultrasound
-
 검사 프로토콜에 따라:
-
 금식 확인
 방광 충만 확인
 OR C-arm
 수술 전 금식 상태
 의료진 확인
 임상적 사유 확인
+```
 
 필수 안전 항목이 확인되지 않은 경우 검사 시작을 차단하는
 Fail-Closed 방식을 적용했습니다.
@@ -144,6 +151,7 @@ Fail-Closed 방식을 적용했습니다.
 
 검사가 완료되면 영상의학과 전문의가 판독을 작성할 수 있습니다.
 
+```text
 검사 완료
  ↓
 판독대기
@@ -151,6 +159,7 @@ Fail-Closed 방식을 적용했습니다.
 판독중
  ↓
 판독완료
+```
 
 역할에 따라 기능이 구분됩니다.
 
@@ -172,6 +181,7 @@ Fail-Closed 방식을 적용했습니다.
 
 영상의학과 직원의 근무 상태와 담당 장비를 확인할 수 있습니다.
 
+```text
 근무중
 휴무
 교육
@@ -179,6 +189,7 @@ Fail-Closed 방식을 적용했습니다.
 미배정
 담당 장비
 근무 시간
+```
 
 현재 검사를 수행 중인 경우
 검사 데이터를 기반으로 동적으로 검사중 상태를 표시합니다.
@@ -187,6 +198,7 @@ Fail-Closed 방식을 적용했습니다.
 
 총 10대의 영상의학 장비를 기준으로 구성했습니다.
 
+```text
 X-ray 1
 X-ray 2
 건강검진 X-ray
@@ -197,7 +209,8 @@ MG-01
 수술실 C-arm
 투시실 C-arm
 Portable X-ray
-
+```
+```text
 장비 상태:
 
 사용가능
@@ -206,6 +219,7 @@ Portable X-ray
 점검중
 고장
 사용중지
+```
 
 장비 상태 수정은 관리자 권한에서만 가능합니다.
 
@@ -268,7 +282,7 @@ Fail-Closed 방식을 적용했습니다.
 Supabase Row Level Security(RLS)를 적용하여
 프론트엔드 UI뿐만 아니라 데이터베이스 단계에서도
 사용자 권한을 제한했습니다.
-
+```text
 Reports
 RT
 → SELECT
@@ -278,6 +292,7 @@ Radiologist
 
 Admin
 → SELECT / INSERT / UPDATE
+```
 
 DELETE 정책은 별도로 허용하지 않았습니다.
 
@@ -313,7 +328,7 @@ GitHub
 🗂️ Database Structure
 
 주요 테이블 구조입니다.
-
+```text
 patients
    │
    └── exams
@@ -331,7 +346,7 @@ staff
 equipment
    │
    └── equipment_inspections
-
+```
 
 reservations
 
@@ -339,7 +354,7 @@ profiles
 
 system_settings
 🔄 RIS Workflow
-
+```text
 전체 업무 흐름은 다음과 같습니다.
 
 HIS / EMR 검사 처방
@@ -361,6 +376,8 @@ RIS 검사 Worklist
 영상의학과 전문의 판독
         ↓
 판독완료
+```
+
 🖥️ Local Installation
 1. Repository Clone
 git clone https://github.com/ldavit125-spec/jesus-love-hospital-ris.git
