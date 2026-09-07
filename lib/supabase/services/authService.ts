@@ -79,7 +79,8 @@ export async function signInWithEmailPassword(
       .maybeSingle();
 
     const appRole = normalizeRole(profileRow?.role || data.user.user_metadata?.role);
-    const name = profileRow?.name || data.user.user_metadata?.name || '데모관리자';
+    const defaultName = appRole === 'rt' ? '이지훈' : appRole === 'radiologist' ? '장태성' : '데모관리자';
+    const name = profileRow?.name || data.user.user_metadata?.name || defaultName;
 
     const profile: UserProfile = {
       id: data.user.id,
@@ -87,7 +88,7 @@ export async function signInWithEmailPassword(
       name,
       role: appRole,
       department: appRole === 'admin' ? '의료정보팀 / 관리운영' : appRole === 'radiologist' ? '영상의학과 판독실' : '영상의학팀',
-      initial: name.charAt(0) || '관',
+      initial: name.charAt(0) || (appRole === 'rt' ? '이' : appRole === 'radiologist' ? '장' : '관'),
     };
 
     return { profile, error: null };
@@ -123,7 +124,8 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
       .maybeSingle();
 
     const appRole = normalizeRole(profileRow?.role || user.user_metadata?.role);
-    const name = profileRow?.name || user.user_metadata?.name || '데모관리자';
+    const defaultName = appRole === 'rt' ? '이지훈' : appRole === 'radiologist' ? '장태성' : '데모관리자';
+    const name = profileRow?.name || user.user_metadata?.name || defaultName;
 
     return {
       id: user.id,
@@ -131,7 +133,7 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
       name,
       role: appRole,
       department: appRole === 'admin' ? '의료정보팀 / 관리운영' : appRole === 'radiologist' ? '영상의학과 판독실' : '영상의학팀',
-      initial: name.charAt(0) || '관',
+      initial: name.charAt(0) || (appRole === 'rt' ? '이' : appRole === 'radiologist' ? '장' : '관'),
     };
   } catch (err) {
     console.error('[authService] getCurrentUser error:', err);

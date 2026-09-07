@@ -2085,10 +2085,11 @@ export default function Home() {
             </button>
 
             <div className="login-demo-notice">
-              <strong>데모 시연 계정 안내</strong>
-              아이디: <code>admin1</code> (또는 <code>admin1@jesuslove.hospital</code>)<br />
-              비밀번호: <code>admin01</code><br />
-              Supabase Authentication 보안 세션으로 인증합니다.
+              <strong>계정 안내 (Supabase Auth 실제 세션)</strong>
+              · 관리자: <code>admin1</code> (또는 <code>admin1@jesuslove.hospital</code>) / <code>admin01</code><br />
+              · 방사선사 (이지훈): <code>radiographer@jesuslove.hospital</code><br />
+              · 영상의학과 전문의 (장태성): <code>radiologist@jesuslove.hospital</code><br />
+              <small style={{ color: '#64748b' }}>* 방사선사/전문의 비밀번호는 Supabase Dashboard에서 설정한 값으로 로그인합니다.</small>
             </div>
 
             <div className="login-footer-security">
@@ -2529,7 +2530,7 @@ export default function Home() {
             </div>
           </div>
         )}
-        {active === '시스템 설정' && (
+        {active === '시스템 설정' && currentUser?.role === 'admin' && (
           <div className="module-overlay settings-page">
             <div className="module-card order-card">
               <div className="module-head">
