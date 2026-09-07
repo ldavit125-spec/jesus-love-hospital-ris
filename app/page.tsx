@@ -3227,43 +3227,46 @@ export default function Home() {
                   </tbody>
                 </table>
               </div>
-              {reportSelected && (
-                <div className="report-editor">
-                  <p>
-                    {reportSelected.name} · {reportSelected.exam} ·{' '}
+              {reportSelected && (() => {
+                const canWriteReport = permissions.canWriteReport(currentUser?.role);
+                return (
+                  <div className="report-editor">
+                    <p>
+                      {reportSelected.name} · {reportSelected.exam} ·{' '}
+                      <button
+                        onClick={() => setNotice('PACS 영상 조회를 시작합니다.')}
+                      >
+                        PACS 영상 조회
+                      </button>
+                    </p>
+                    <textarea
+                      rows={8}
+                      disabled={!canWriteReport || isReportSaving}
+                      value={reportTexts[reportSelected.accession || reportSelected.id] ?? reportTexts[reportSelected.id] ?? ''}
+                      onChange={(e) => {
+                        const targetKey = reportSelected.accession || reportSelected.id;
+                        setReportTexts({
+                          ...reportTexts,
+                          [targetKey]: e.target.value,
+                          [reportSelected.id]: e.target.value,
+                        });
+                      }}
+                      placeholder={
+                        canWriteReport
+                          ? '판독문을 작성하세요.'
+                          : '방사선사는 판독 결과만 조회할 수 있습니다.'
+                      }
+                    />
                     <button
-                      onClick={() => setNotice('PACS 영상 조회를 시작합니다.')}
+                      className="register-order"
+                      disabled={!canWriteReport || isReportSaving}
+                      onClick={() => handleSaveReport(reportSelected.accession || reportSelected.id, reportTexts[reportSelected.accession || reportSelected.id] ?? reportTexts[reportSelected.id] ?? '')}
                     >
-                      PACS 영상 조회
+                      {isReportSaving ? '판독 저장 중...' : '판독 완료'}
                     </button>
-                  </p>
-                  <textarea
-                    rows={8}
-                    disabled={reportRole !== '전문의' || isReportSaving}
-                    value={reportTexts[reportSelected.accession || reportSelected.id] ?? reportTexts[reportSelected.id] ?? ''}
-                    onChange={(e) => {
-                      const targetKey = reportSelected.accession || reportSelected.id;
-                      setReportTexts({
-                        ...reportTexts,
-                        [targetKey]: e.target.value,
-                        [reportSelected.id]: e.target.value,
-                      });
-                    }}
-                    placeholder={
-                      reportRole === '전문의'
-                        ? '판독문을 작성하세요.'
-                        : '방사선사는 판독 결과만 조회할 수 있습니다.'
-                    }
-                  />
-                  <button
-                    className="register-order"
-                    disabled={reportRole !== '전문의' || isReportSaving}
-                    onClick={() => handleSaveReport(reportSelected.accession || reportSelected.id, reportTexts[reportSelected.accession || reportSelected.id] ?? reportTexts[reportSelected.id] ?? '')}
-                  >
-                    {isReportSaving ? '판독 저장 중...' : '판독 완료'}
-                  </button>
-                </div>
-              )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
