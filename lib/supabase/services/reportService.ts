@@ -173,17 +173,14 @@ export async function saveReport(params: {
       savedReport = (data as Report) || null;
     }
 
-    // 2. exams 테이블의 interpretation_status 동기화
-    const { error: examUpdateErr } = await supabase
-      .from('exams')
-      .update({
-        interpretation_status: status as InterpretationStatus,
-        updated_at: now,
-      })
-      .eq('id', examId);
+    // 2. exams 테이블의 interpretation_status 동기화 (전용 RPC 호출)
+    const { error: examRpcErr } = await supabase.rpc('set_exam_interpretation_status', {
+      p_exam_id: examId,
+      p_status: status,
+    });
 
-    if (examUpdateErr) {
-      console.error(`[reportService] update exam interpretation_status error:`, examUpdateErr.message);
+    if (examRpcErr) {
+      console.error(`[reportService] set_exam_interpretation_status rpc error:`, examRpcErr.message);
     }
 
     return { data: savedReport, error: null };
