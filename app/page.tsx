@@ -3393,14 +3393,13 @@ export default function Home() {
               <h2>검사 현황</h2>
               <p>
                 {(() => {
-                  const [y, m, d] = date.split('-').map(Number);
+                  const now = new Date();
+                  const y = now.getFullYear();
+                  const m = String(now.getMonth() + 1).padStart(2, '0');
+                  const d = String(now.getDate()).padStart(2, '0');
                   const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
-                  if (y && m && d) {
-                    const targetDate = new Date(y, m - 1, d);
-                    const dayName = dayNames[targetDate.getDay()];
-                    return `${y}년 ${m}월 ${d}일 ${dayName} · 오전 근무`;
-                  }
-                  return `${date} · 오전 근무`;
+                  const dayName = dayNames[now.getDay()];
+                  return `${y}. ${m}. ${d} ${dayName} · 오전 근무`;
                 })()}
               </p>
             </div>
