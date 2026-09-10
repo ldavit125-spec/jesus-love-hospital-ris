@@ -34,6 +34,7 @@ export interface Patient {
 
 export interface Exam {
   id: string;
+  accession_number?: string | null;
   patient_id?: string | null;
   patient_name: string;
   exam_name: string;

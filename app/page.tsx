@@ -70,6 +70,8 @@ import {
   roleDisplayLabel,
   type UserProfile,
   type AppRole,
+  getPacsStudyLinkByExamId,
+  type PacsStudyLink,
 } from '@/lib/supabase/services';
 
 const navItems = [
@@ -120,6 +122,7 @@ const calculateAge = (birthDate?: string, fallbackAge?: number): number => {
 
 type Exam = {
   id: string;
+  examId?: string;
   date: string;
   time: string;
   name: string;
@@ -433,6 +436,7 @@ export default function Home() {
     [modality, setModality] = useState('전체 Modality'),
     [examStatus, setExamStatus] = useState('전체 상태'),
     [exams, setExams] = useState<Exam[]>([]),
+    [pacsLinks, setPacsLinks] = useState<Record<string, PacsStudyLink>>({}),
     [selectedId, setSelectedId] = useState<string | null>(null),
     [notice, setNotice] = useState(''),
     [worklistView, setWorklistView] = useState<
@@ -664,6 +668,7 @@ export default function Home() {
 
           return {
             id: item.patient_id || item.id,
+            examId: item.id,
             date: dateStr,
             time: timeStr,
             name: item.patient_name || patient?.name || '환자',
@@ -678,13 +683,19 @@ export default function Home() {
             tech: item.radiographer_name || '',
             status: item.status,
             urgent: item.urgency === '응급',
-            accession: item.id,
+            accession: item.accession_number || `ACC-${item.id}`,
             doctor: item.order_doctor || '',
             memo: item.notes || '',
             interpretationStatus: item.interpretation_status,
           };
         });
         setExams(mapped);
+        const linkEntries = await Promise.all(mapped.map(async (exam) => {
+          if (!exam.examId) return null;
+          const link = await getPacsStudyLinkByExamId(exam.examId);
+          return link.data ? [exam.examId, link.data] as const : null;
+        }));
+        setPacsLinks(Object.fromEntries(linkEntries.filter((entry): entry is readonly [string, PacsStudyLink] => Boolean(entry))));
         setWorklistError(null);
         setFirestoreStatus('connected');
       }
@@ -721,6 +732,16 @@ export default function Home() {
     } finally {
       setIsActionLoading(false);
     }
+  };
+
+  const openPacsViewer = (exam: Exam) => {
+    const link = exam.examId ? pacsLinks[exam.examId] : undefined;
+    if (!link) return;
+    const params = new URLSearchParams({
+      studyInstanceUid: link.study_instance_uid,
+      orthancStudyId: link.orthanc_study_id,
+    });
+    window.open(`http://localhost:5174/?${params.toString()}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleCompleteExam = async (examId: string) => {
@@ -3234,11 +3255,13 @@ export default function Home() {
                   <div className="report-editor">
                     <p>
                       {reportSelected.name} · {reportSelected.exam} ·{' '}
-                      <button
-                        onClick={() => setNotice('PACS 영상 조회를 시작합니다.')}
-                      >
-                        PACS 영상 조회
-                      </button>
+                      {reportSelected.examId && pacsLinks[reportSelected.examId] ? (
+                        <button onClick={() => openPacsViewer(reportSelected)}>
+                          PACS 영상 조회
+                        </button>
+                      ) : (
+                        <span className="unassigned">PACS 영상 없음</span>
+                      )}
                     </p>
                     <textarea
                       rows={8}
@@ -3650,6 +3673,7 @@ export default function Home() {
                         '검사명',
                         'Modality',
                         '검사실',
+                        'PACS 영상',
                         '담당 방사선사',
                         '검사 상태',
                         '호출 상태',
@@ -3704,6 +3728,13 @@ export default function Home() {
                         <td>{exam.exam}</td>
                         <td>{exam.modality}</td>
                         <td>{roomName(exam.equipment)}</td>
+                        <td>
+                          {exam.examId && pacsLinks[exam.examId] ? (
+                            <button className="text-button" onClick={(e) => { e.stopPropagation(); openPacsViewer(exam); }}>
+                              PACS 영상 보기
+                            </button>
+                          ) : <span className="unassigned">PACS 영상 없음</span>}
+                        </td>
                         <td>
                           {assignedTechFor(exam) || (
                             <span className="unassigned">미배정</span>

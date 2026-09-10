@@ -7,3 +7,4 @@ export * from './reservationService';
 export * from './staffService';
 export * from './authService';
 export * from './settingService';
+export * from './pacsStudyLinkService';
