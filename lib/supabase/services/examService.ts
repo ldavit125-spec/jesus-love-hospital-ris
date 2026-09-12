@@ -57,9 +57,9 @@ export async function getExams(
  * 매핑이 없는 검사는 빈 배열로 반환되어 RIS에서 Viewer 버튼을 표시하지 않는다.
  */
 export async function getPacsStudyLinks(
-  examIds: string[]
+  dbExamIds: string[]
 ): Promise<{ data: PacsStudyLink[] | null; error: Error | null }> {
-  const ids = Array.from(new Set(examIds.filter(Boolean)));
+  const ids = Array.from(new Set(dbExamIds.filter(Boolean)));
   if (!ids.length) return { data: [], error: null };
 
   if (!isSupabaseConfigured || !supabase) {

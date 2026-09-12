@@ -647,7 +647,10 @@ export default function Home() {
         setExams([]);
         setFirestoreStatus('fallback');
       } else if (res.data) {
-        const pacsLinks = await getPacsStudyLinks(res.data.map((item) => item.id));
+        // Supabase exams.id is the DB primary key. patient_id is only the
+        // human-facing exam number and must never be used for PACS links.
+        const dbExamIds = res.data.map((item) => item.id);
+        const pacsLinks = await getPacsStudyLinks(dbExamIds);
         if (pacsLinks.error) {
           console.error('[loadSupabaseWorklist] PACS 매핑 조회 실패:', pacsLinks.error.message);
         }
@@ -656,6 +659,7 @@ export default function Home() {
         );
 
         const mapped: Exam[] = res.data.map((item) => {
+          const dbExamId = item.id;
           let dateStr = '2026-08-29';
           let timeStr = '09:00';
           if (item.order_date) {
@@ -674,8 +678,8 @@ export default function Home() {
           return {
             // Keep Supabase exams.id as the internal key. patient_id is only
             // the number shown to staff and must not identify PACS links.
-            id: item.id,
-            displayExamNumber: item.patient_id || item.id,
+            id: dbExamId,
+            displayExamNumber: item.patient_id || dbExamId,
             date: dateStr,
             time: timeStr,
             name: item.patient_name || patient?.name || '환자',
@@ -690,11 +694,11 @@ export default function Home() {
             tech: item.radiographer_name || '',
             status: item.status,
             urgent: item.urgency === '응급',
-            accession: item.id,
+            accession: dbExamId,
             doctor: item.order_doctor || '',
             memo: item.notes || '',
             interpretationStatus: item.interpretation_status,
-            pacsStudyLink: pacsLinksByExamId.get(item.id) ?? null,
+            pacsStudyLink: pacsLinksByExamId.get(dbExamId) ?? null,
             protocol: item.protocols ?? null,
           };
         });
