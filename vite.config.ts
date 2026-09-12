@@ -47,6 +47,9 @@ export default defineConfig(async () => {
   const { cloudflare } = await import('@cloudflare/vite-plugin');
 
   return {
+    // Supabase's public settings must reach the browser in Vite dev and builds.
+    // Keep server-only environment variables outside this allowlist.
+    envPrefix: ['VITE_', 'NEXT_PUBLIC_SUPABASE_'],
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,
