@@ -962,13 +962,20 @@ tbody tr {
   top: 0;
   right: 0;
   width: 410px;
+  max-width: 100vw;
   height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   background: #fff;
   box-shadow: -12px 0 32px #0b29431f;
   display: flex;
   flex-direction: column;
   color: #263a50;
   animation: drawer-in 0.18s ease-out;
+}
+.exam-drawer > * {
+  flex-shrink: 0;
 }
 @keyframes drawer-in {
   from {
