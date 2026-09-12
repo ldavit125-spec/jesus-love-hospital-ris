@@ -119,7 +119,8 @@ const calculateAge = (birthDate?: string, fallbackAge?: number): number => {
 };
 
 type Exam = {
-  id: string;
+  id: string; // public.exams.id; never the display number
+  displayExamNumber?: string;
   date: string;
   time: string;
   name: string;
@@ -663,7 +664,8 @@ export default function Home() {
           const calculatedAge = birthDate ? calculateAgeFromBirthDate(birthDate) : 0;
 
           return {
-            id: item.patient_id || item.id,
+            id: item.id,
+            displayExamNumber: item.patient_id || item.id,
             date: dateStr,
             time: timeStr,
             name: item.patient_name || patient?.name || '환자',
@@ -787,25 +789,13 @@ export default function Home() {
   // 특정 검사 선택 시 해당 검사의 최신 판독문 Supabase에서 단건 로드
   const loadReportForExam = async (examId: string) => {
     if (!examId) return;
-    const targetExam = exams.find((e) => e.id === examId);
-    const accession = targetExam?.accession || examId;
     try {
-      const res = await getReportByExam(accession);
-      if (res.data?.findings) {
+      const res = await getReportByExam(examId);
+      if (res.data) {
         setReportTexts((prev) => ({
           ...prev,
-          [accession]: res.data!.findings || '',
           [examId]: res.data!.findings || '',
         }));
-      } else if (accession !== examId) {
-        const res2 = await getReportByExam(examId);
-        if (res2.data?.findings) {
-          setReportTexts((prev) => ({
-            ...prev,
-            [accession]: res2.data!.findings || '',
-            [examId]: res2.data!.findings || '',
-          }));
-        }
       }
     } catch (err: any) {
       console.error('[loadReportForExam] error:', err);
@@ -1396,7 +1386,8 @@ export default function Home() {
         exam.status === '완료' &&
         (!reportQuery ||
           exam.name.includes(reportQuery) ||
-          exam.id.includes(reportQuery)) &&
+          exam.id.includes(reportQuery) ||
+          exam.displayExamNumber?.includes(reportQuery)) &&
         (reportModality === '전체 Modality' ||
           exam.modality === reportModality) &&
         (reportStatus === '전체 판독상태' || currentInterp === reportStatus)
@@ -3202,13 +3193,12 @@ export default function Home() {
                   </thead>
                   <tbody>
                     {reportRows.map((exam) => {
-                      const examKey = exam.accession || exam.id;
                       return (
                         <tr
                           key={exam.id}
                           onClick={() => setReportSelectedId(exam.id)}
                         >
-                          <td>{exam.id}</td>
+                          <td>{exam.displayExamNumber || exam.id}</td>
                           <td>{exam.name}</td>
                           <td>{exam.exam}</td>
                           <td>{exam.modality}</td>
@@ -3219,7 +3209,7 @@ export default function Home() {
                           <td>{exam.doctor}</td>
                           <td>
                             <Status
-                              s={exam.interpretationStatus || (reportTexts[examKey] || reportTexts[exam.id] ? '판독완료' : '판독대기')}
+                              s={exam.interpretationStatus || '판독대기'}
                             />
                           </td>
                         </tr>
@@ -3243,25 +3233,17 @@ export default function Home() {
                     <textarea
                       rows={8}
                       disabled={!canWriteReport || isReportSaving}
-                      value={reportTexts[reportSelected.accession || reportSelected.id] ?? reportTexts[reportSelected.id] ?? ''}
-                      onChange={(e) => {
-                        const targetKey = reportSelected.accession || reportSelected.id;
-                        setReportTexts({
-                          ...reportTexts,
-                          [targetKey]: e.target.value,
-                          [reportSelected.id]: e.target.value,
-                        });
-                      }}
-                      placeholder={
-                        canWriteReport
-                          ? '판독문을 작성하세요.'
-                          : '방사선사는 판독 결과만 조회할 수 있습니다.'
-                      }
+                      value={reportTexts[reportSelected.id] ?? ''}
+                      onChange={(e) => setReportTexts((prev) => ({
+                        ...prev,
+                        [reportSelected.id]: e.target.value,
+                      }))}
+                      placeholder={canWriteReport ? '판독문을 작성하세요.' : '방사선사는 판독 결과만 조회할 수 있습니다.'}
                     />
                     <button
                       className="register-order"
                       disabled={!canWriteReport || isReportSaving}
-                      onClick={() => handleSaveReport(reportSelected.accession || reportSelected.id, reportTexts[reportSelected.accession || reportSelected.id] ?? reportTexts[reportSelected.id] ?? '')}
+                      onClick={() => handleSaveReport(reportSelected.id, reportTexts[reportSelected.id] ?? '')}
                     >
                       {isReportSaving ? '판독 저장 중...' : '판독 완료'}
                     </button>
@@ -3693,7 +3675,7 @@ export default function Home() {
                             className="patient-id"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {exam.id}
+                            {exam.displayExamNumber || exam.id}
                           </button>
                         </td>
                         <td>
@@ -3874,7 +3856,7 @@ export default function Home() {
                   </small>
                 </h4>
                 <p>
-                  {selected.id} · {selected.department}
+                  {selected.displayExamNumber || selected.id} · {selected.department}
                 </p>
               </div>
               {selected.urgent && (

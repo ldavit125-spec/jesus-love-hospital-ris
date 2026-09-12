@@ -99,7 +99,8 @@ export async function getReadingQueue(): Promise<{ data: Exam[] | null; error: E
  * - exams 테이블의 interpretation_status 동기화 ('판독중' 또는 '판독완료')
  */
 export async function saveReport(params: {
-  examId: string;
+  /** public.exams.id (DB PK). 화면 표시번호/patient_id를 전달하지 않는다. */
+  examId: Exam['id'];
   findings: string;
   conclusion?: string | null;
   status: '판독중' | '판독완료';
@@ -125,6 +126,7 @@ export async function saveReport(params: {
 
     if (searchError) {
       console.error(`[reportService] saveReport search error:`, searchError.message);
+      return { data: null, error: new Error(searchError.message) };
     }
 
     const now = new Date().toISOString();
@@ -173,6 +175,10 @@ export async function saveReport(params: {
       savedReport = (data as Report) || null;
     }
 
+    if (!savedReport) {
+      return { data: null, error: new Error('저장된 판독문을 확인할 수 없습니다.') };
+    }
+
     // 2. exams 테이블의 interpretation_status 동기화 (전용 RPC 호출)
     const { error: examRpcErr } = await supabase.rpc('set_exam_interpretation_status', {
       p_exam_id: examId,
@@ -181,6 +187,7 @@ export async function saveReport(params: {
 
     if (examRpcErr) {
       console.error(`[reportService] set_exam_interpretation_status rpc error:`, examRpcErr.message);
+      return { data: savedReport, error: new Error(`판독문은 저장되었으나 판독 상태 동기화에 실패했습니다: ${examRpcErr.message}`) };
     }
 
     return { data: savedReport, error: null };
