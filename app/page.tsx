@@ -148,18 +148,13 @@ type Exam = {
   protocol?: Protocol | null;
 };
 
-const PACS_VIEWER_URL = 'http://localhost:5174/';
+const PACS_BASE_URL = (process.env.NEXT_PUBLIC_PACS_URL || 'http://localhost:3000').replace(/\/+$/, '');
 
 function buildPacsViewerUrl(link?: PacsStudyLink | null): string | null {
   const studyInstanceUid = link?.study_instance_uid?.trim();
-  const orthancStudyId = link?.orthanc_study_id?.trim();
+  if (!studyInstanceUid) return null;
 
-  if (!studyInstanceUid || !orthancStudyId) return null;
-
-  const url = new URL(PACS_VIEWER_URL);
-  url.searchParams.set('studyInstanceUid', studyInstanceUid);
-  url.searchParams.set('orthancStudyId', orthancStudyId);
-  return url.toString();
+  return `${PACS_BASE_URL}/viewer/${encodeURIComponent(studyInstanceUid)}`;
 }
 
 const initialWorklist: Exam[] = [
