@@ -3,6 +3,7 @@ import {
   Exam,
   ExamQueryFilter,
   ExamStatus,
+  PacsStudyLink,
 } from '../types';
 import { validateExamStart } from './checklistService';
 import { isEquipmentOperational } from './equipmentService';
@@ -22,7 +23,7 @@ export async function getExams(
   try {
     let query = supabase
       .from('exams')
-      .select('*, patients(*)')
+      .select('*, patients(*), protocols(id, code, name, modality, body_part, projection_view, description, preparation)')
       .order('order_date', { ascending: true });
 
     if (filters?.status && filters.status !== '전체' && filters.status !== '전체 상태') {
@@ -48,6 +49,40 @@ export async function getExams(
   } catch (error: any) {
     console.error('[examService] getExams exception:', error);
     return { data: null, error: new Error(error?.message || '검사 목록 조회 중 예외가 발생했습니다.') };
+  }
+}
+
+/**
+ * PACS 매핑은 검사 DB id를 기준으로 조회한다.
+ * 매핑이 없는 검사는 빈 배열로 반환되어 RIS에서 Viewer 버튼을 표시하지 않는다.
+ */
+export async function getPacsStudyLinks(
+  examIds: string[]
+): Promise<{ data: PacsStudyLink[] | null; error: Error | null }> {
+  const ids = Array.from(new Set(examIds.filter(Boolean)));
+  if (!ids.length) return { data: [], error: null };
+
+  if (!isSupabaseConfigured || !supabase) {
+    const err = new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+    console.error('[examService] getPacsStudyLinks:', err.message);
+    return { data: null, error: err };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('pacs_study_links')
+      .select('exam_id, study_instance_uid, orthanc_study_id')
+      .in('exam_id', ids);
+
+    if (error) {
+      console.error('[examService] getPacsStudyLinks DB error:', error.message);
+      return { data: null, error: new Error(error.message) };
+    }
+
+    return { data: (data as PacsStudyLink[]) || [], error: null };
+  } catch (error: any) {
+    console.error('[examService] getPacsStudyLinks exception:', error);
+    return { data: null, error: new Error(error?.message || 'PACS 매핑 조회 중 예외가 발생했습니다.') };
   }
 }
 

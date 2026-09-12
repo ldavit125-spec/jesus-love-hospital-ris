@@ -32,6 +32,19 @@ export interface Patient {
   updated_at?: string;
 }
 
+export interface Protocol {
+  id: string;
+  code: string;
+  name: string;
+  modality: string;
+  body_part?: string | null;
+  projection_view?: string | null;
+  description?: string | null;
+  preparation?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Exam {
   id: string;
   patient_id?: string | null;
@@ -50,9 +63,17 @@ export interface Exam {
   started_at?: string | null;
   completed_at?: string | null;
   notes?: string | null;
+  protocol_id?: string | null;
   created_at?: string;
   updated_at?: string;
   patients?: Patient | null;
+  protocols?: Protocol | null;
+}
+
+export interface PacsStudyLink {
+  exam_id: string;
+  study_instance_uid: string;
+  orthanc_study_id: string;
 }
 
 export interface ExamChecklist {

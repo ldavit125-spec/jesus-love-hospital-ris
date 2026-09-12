@@ -39,11 +39,14 @@ import {
   calculateAgeFromBirthDate,
   type PatientWithCalculatedAge,
   getExams as getSupabaseExams,
+  getPacsStudyLinks,
   startExam as startSupabaseExam,
   completeExam as completeSupabaseExam,
   getExamChecklist,
   saveExamChecklist,
   type ExamChecklist,
+  type PacsStudyLink,
+  type Protocol,
   getReports,
   getReportByExam,
   saveReport,
@@ -119,7 +122,7 @@ const calculateAge = (birthDate?: string, fallbackAge?: number): number => {
 };
 
 type Exam = {
-  id: string; // public.exams.id; never the display number
+  id: string;
   displayExamNumber?: string;
   date: string;
   time: string;
@@ -141,7 +144,24 @@ type Exam = {
   callStatus?: string;
   callTime?: string;
   interpretationStatus?: InterpretationStatus | null;
+  pacsStudyLink?: PacsStudyLink | null;
+  protocol?: Protocol | null;
 };
+
+const PACS_VIEWER_URL = 'http://localhost:5174/';
+
+function buildPacsViewerUrl(link?: PacsStudyLink | null): string | null {
+  const studyInstanceUid = link?.study_instance_uid?.trim();
+  const orthancStudyId = link?.orthanc_study_id?.trim();
+
+  if (!studyInstanceUid || !orthancStudyId) return null;
+
+  const url = new URL(PACS_VIEWER_URL);
+  url.searchParams.set('studyInstanceUid', studyInstanceUid);
+  url.searchParams.set('orthancStudyId', orthancStudyId);
+  return url.toString();
+}
+
 const initialWorklist: Exam[] = [
   {
     id: '202608-01482',
@@ -222,26 +242,6 @@ const initialWorklist: Exam[] = [
     accession: 'ACC260829-1466',
     doctor: '이현수',
     memo: '8시간 금식 확인',
-  },
-  {
-    id: '202608-01458',
-    date: '2026-08-29',
-    time: '09:20',
-    name: '정현우',
-    sex: '남',
-    age: 31,
-    birthDate: '1995-04-03',
-    phone: '010-0000-0005',
-    exam: 'Knee AP/LAT',
-    modality: 'X-ray',
-    equipment: 'X-ray 2',
-    department: '정형외과',
-    tech: '오세훈',
-    status: '완료',
-    urgent: false,
-    accession: 'ACC260829-1458',
-    doctor: '오정민',
-    memo: '우측 슬관절',
   },
   {
     id: '202608-01453',
@@ -647,6 +647,14 @@ export default function Home() {
         setExams([]);
         setFirestoreStatus('fallback');
       } else if (res.data) {
+        const pacsLinks = await getPacsStudyLinks(res.data.map((item) => item.id));
+        if (pacsLinks.error) {
+          console.error('[loadSupabaseWorklist] PACS 매핑 조회 실패:', pacsLinks.error.message);
+        }
+        const pacsLinksByExamId = new Map(
+          (pacsLinks.data ?? []).map((link) => [link.exam_id, link])
+        );
+
         const mapped: Exam[] = res.data.map((item) => {
           let dateStr = '2026-08-29';
           let timeStr = '09:00';
@@ -664,6 +672,8 @@ export default function Home() {
           const calculatedAge = birthDate ? calculateAgeFromBirthDate(birthDate) : 0;
 
           return {
+            // Keep Supabase exams.id as the internal key. patient_id is only
+            // the number shown to staff and must not identify PACS links.
             id: item.id,
             displayExamNumber: item.patient_id || item.id,
             date: dateStr,
@@ -684,6 +694,8 @@ export default function Home() {
             doctor: item.order_doctor || '',
             memo: item.notes || '',
             interpretationStatus: item.interpretation_status,
+            pacsStudyLink: pacsLinksByExamId.get(item.id) ?? null,
+            protocol: item.protocols ?? null,
           };
         });
         setExams(mapped);
@@ -752,8 +764,9 @@ export default function Home() {
   };
 
   useEffect(() => {
+    if (isAuthChecking) return;
     loadSupabaseWorklist();
-  }, []);
+  }, [isAuthChecking]);
   const [reservationSelectedId, setReservationSelectedId] = useState<
     string | null
   >(null);
@@ -1396,6 +1409,7 @@ export default function Home() {
   );
   const reportSelected =
     exams.find((exam) => exam.id === reportSelectedId) ?? null;
+
   const assignSave = () => {
     if (!assignTechName) return;
     const tech = techOptions.find((t) => t.name === assignTechName);
@@ -3220,15 +3234,22 @@ export default function Home() {
               </div>
               {reportSelected && (() => {
                 const canWriteReport = permissions.canWriteReport(currentUser?.role);
+                const pacsViewerUrl = buildPacsViewerUrl(reportSelected.pacsStudyLink);
                 return (
                   <div className="report-editor">
                     <p>
                       {reportSelected.name} · {reportSelected.exam} ·{' '}
-                      <button
-                        onClick={() => setNotice('PACS 영상 조회를 시작합니다.')}
-                      >
-                        PACS 영상 조회
-                      </button>
+                      {pacsViewerUrl ? (
+                        <a
+                          href={pacsViewerUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          PACS 영상 조회
+                        </a>
+                      ) : (
+                        <span className="pacs-unavailable">PACS Study 연결 정보가 없습니다.</span>
+                      )}
                     </p>
                     <textarea
                       rows={8}
@@ -3900,6 +3921,43 @@ export default function Home() {
                   <dd>{selected.doctor}</dd>
                 </div>
               </dl>
+            </section>
+            <section className="drawer-section">
+              <h5>촬영 프로토콜</h5>
+              {selected.protocol ? (
+                <>
+                  <dl>
+                    <div>
+                      <dt>프로토콜</dt>
+                      <dd>{selected.protocol.name}</dd>
+                    </div>
+                    <div>
+                      <dt>Modality</dt>
+                      <dd>{selected.protocol.modality || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt>Body Part</dt>
+                      <dd>{selected.protocol.body_part || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt>View</dt>
+                      <dd>{selected.protocol.projection_view || '-'}</dd>
+                    </div>
+                  </dl>
+                  {selected.protocol.description && (
+                    <p style={{ margin: '12px 0 0', lineHeight: 1.6 }}>
+                      <strong>촬영 설명:</strong> {selected.protocol.description}
+                    </p>
+                  )}
+                  {selected.protocol.preparation && (
+                    <p style={{ margin: '8px 0 0', lineHeight: 1.6 }}>
+                      <strong>환자 준비:</strong> {selected.protocol.preparation}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p style={{ margin: 0, color: '#64748b' }}>등록된 촬영 프로토콜 없음</p>
+              )}
             </section>
             {(selected.modality === 'CT' || selected.modality === 'MRI' || isOrCarm || (isUS && prepItems.length > 0)) && (
               <section className="drawer-section">

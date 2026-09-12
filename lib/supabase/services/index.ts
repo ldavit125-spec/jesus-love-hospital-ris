@@ -1,5 +1,6 @@
 export * from './patientService';
 export * from './examService';
+export * from './protocolService';
 export * from './equipmentService';
 export * from './checklistService';
 export * from './reportService';
