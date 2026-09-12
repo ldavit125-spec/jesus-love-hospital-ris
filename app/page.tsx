@@ -3245,6 +3245,7 @@ export default function Home() {
                       {reportSelected.name} · {reportSelected.exam} ·{' '}
                       {pacsViewerUrl ? (
                         <a
+                          className="pacs-viewer-button"
                           href={pacsViewerUrl}
                           target="_blank"
                           rel="noopener noreferrer"
